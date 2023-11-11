@@ -15,7 +15,7 @@ PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-DIRECTORY = "/home/caicedo/scr/jcaicedo/Micronuclei-data/"
+DIRECTORY = "/home/caicedo/scr/jcaicedo/Micronuclei-data/dataset_v2/"
 
 EPOCHS = 20
 BATCH_SIZE = 48
@@ -54,7 +54,6 @@ for i in range(len(annot_files)):
     
     # Save
     model.save()
-
 
 
 

@@ -16,7 +16,7 @@ import extractor
 import detection
 import vision_transformer as vit
 
-class MicronucleiModel:
+class MicronucleiModel():
     
     def __init__(self, data_dir, training_files, validation_files, device):
         self.data_dir = data_dir
@@ -136,5 +136,5 @@ class MicronucleiModel:
         
     def save(self):
         output_file = self.data_dir + "models/" + self.validation_files[0].replace('phenotype_outlines.png','pth')
-        torch.save(self.model, output_file)
+        torch.save(self.model.state_dict(), output_file)
         
