@@ -13,10 +13,14 @@ import torchvision.transforms.functional as TF
 SCALE_FACTOR = 2.0
 
 # GRAY SCALE PATCH TO RGB IMAGE
-def patch_to_rgb(patch):
-    sobel = skimage.filters.sobel(patch)
-    sobel = 2*skimage.exposure.rescale_intensity(sobel, out_range=np.float32)
-    sobel[sobel > 1.] = 1.
+def patch_to_rgb(patch, edges=True):
+    if edges:
+        sobel = skimage.filters.sobel(patch)
+        sobel = 2*skimage.exposure.rescale_intensity(sobel, out_range=np.float32)
+        sobel[sobel > 1.] = 1.
+    else:
+        sobel = patch
+        
     px = np.concatenate(
         (sobel[np.newaxis,:,:], patch[np.newaxis,:,:], patch[np.newaxis,:,:]), 
         axis=0)
@@ -229,7 +233,7 @@ class MicronucleiDataset(Dataset):
         
         # Apply augmentations
         if self.mode == "random" and self.transform is not None:
-            grid = patch_to_rgb(grid)
+            grid = patch_to_rgb(grid, edges=False)
             crop, grid = self.transform(crop, grid)
             grid = grid[0,:,:]
             
