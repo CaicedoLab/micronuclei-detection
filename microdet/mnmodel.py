@@ -18,7 +18,7 @@ import vision_transformer as vit
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, training_files, validation_files, device):
+    def __init__(self, data_dir, training_files, validation_files, device, scale_factor=1.0):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
@@ -27,13 +27,15 @@ class MicronucleiModel():
             filelist=training_files, 
             directory=data_dir, 
             mode="random", 
-            transform=mnds.detection_transforms
+            transform=mnds.detection_transforms,
+            scale_factor=scale_factor
         )
         
         self.validation_set = mnds.MicronucleiDataset(
             filelist=validation_files, 
             directory=data_dir, 
-            mode="fixed"
+            mode="fixed",
+            scale_factor=scale_factor
         )
         
     def start_model(self, batch_size, learning_rate):
@@ -134,7 +136,7 @@ class MicronucleiModel():
         print(report)
         
         
-    def save(self):
-        output_file = self.data_dir + "models/" + self.validation_files[0].replace('phenotype_outlines.png','pth')
+    def save(self, outdir="models/"):
+        output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
         torch.save(self.model.state_dict(), output_file)
         

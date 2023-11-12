@@ -10,8 +10,6 @@ from tqdm import tqdm
 from torch.utils.data import Dataset
 import torchvision.transforms.functional as TF
 
-SCALE_FACTOR = 2.0
-
 # GRAY SCALE PATCH TO RGB IMAGE
 def patch_to_rgb(patch, edges=True):
     if edges:
@@ -35,24 +33,26 @@ def read_image(directory, imid, suffix, scale=1.0):
 
 
 # READ MICRONUCLEI ANNOTATIONS
-def read_micronuclei_annotations(directory, imid):
+def read_micronuclei_annotations(directory, imid, scale_factor=1.0):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=1.0)
     # Transform annotations to labels
     otl = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
     labels = skimage.measure.label(mask)
+    labels = skimage.morphology.dilation(labels) #recover object edge
 
     data = []
     for i in range(1,len(np.unique(labels))):
         ys,xs = np.where(labels == i)
         a,b = int(np.mean(ys)), int(np.mean(xs))
         area = np.sum(labels == i)
-        a = int(SCALE_FACTOR * a)
-        b = int(SCALE_FACTOR * b)
-        data.append({"Image":f'{directory}/{imid}.phenotype.tif', "x":b, "y":a, "area":area})
+        if area <= 400:
+            a = int(scale_factor * a)
+            b = int(scale_factor * b)
+            data.append({"Image":f'{directory}/{imid}.phenotype.tif', "x":b, "y":a, "area":area})
 
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area"])
-    return mni
+    return mni #, labels
 
 # PATCH AUGMENTATIONS
 def detection_transforms(patch, target):
@@ -82,7 +82,7 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, filelist, directory, mode="random", patch_size=256, stride=8, feature_size=384, transform=None):
+    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, transform=None):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
@@ -96,7 +96,7 @@ class MicronucleiDataset(Dataset):
         self.images = {}
         for fname in tqdm(filelist):
             imid = fname.split('.')[0]
-            im = read_image(directory, imid, 'phenotype.tif', SCALE_FACTOR)
+            im = read_image(directory, imid, 'phenotype.tif', scale_factor)
             im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
             mni = read_micronuclei_annotations(directory, imid)
             all_locs.append(mni)

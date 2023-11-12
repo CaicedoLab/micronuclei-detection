@@ -10,12 +10,14 @@ import mnmodel
 
 # In[3]:
 
+SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 DIRECTORY = "/home/caicedo/scr/jcaicedo/Micronuclei-data/dataset_v2/"
+OUTPUT_DIR = "experiments/2023-11-12/models/"
 
 EPOCHS = 20
 BATCH_SIZE = 48
@@ -44,7 +46,7 @@ for i in range(len(annot_files)):
     print(" *** ", validation_files, " *** ")
 
     # Create model
-    model = mnmodel.MicronucleiModel(DIRECTORY, training_files, validation_files, device)
+    model = mnmodel.MicronucleiModel(DIRECTORY, training_files, validation_files, device, scale_factor=SCALE_FACTOR)
     
     # Train
     model.train(EPOCHS, BATCH_SIZE, LR)
@@ -53,7 +55,7 @@ for i in range(len(annot_files)):
     model.validate()
     
     # Save
-    model.save()
+    model.save(outdir=OUTPUT_DIR)
 
 
 
