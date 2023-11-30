@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms.functional as TF
 
 # GRAY SCALE PATCH TO RGB IMAGE
-def patch_to_rgb(patch, edges=True):
+def patch_to_rgb(patch, edges=False):
     if edges:
         sobel = skimage.filters.sobel(patch)
         sobel = 2*skimage.exposure.rescale_intensity(sobel, out_range=np.float32)
@@ -28,13 +28,15 @@ def patch_to_rgb(patch, edges=True):
 def read_image(directory, imid, suffix, scale=1.0):
     imname = f'{directory}/{imid}.{suffix}'
     im = skimage.io.imread(imname)
-    im = skimage.transform.rescale(im, scale)
+    if scale != 1.:
+        im = skimage.transform.rescale(im, scale)
     return im
 
 
 # READ MICRONUCLEI ANNOTATIONS
-def read_micronuclei_annotations(directory, imid, scale_factor=1.0):
-    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=1.0)
+def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
+    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
+    img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
     # Transform annotations to labels
     otl = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
@@ -44,14 +46,15 @@ def read_micronuclei_annotations(directory, imid, scale_factor=1.0):
     data = []
     for i in range(1,len(np.unique(labels))):
         ys,xs = np.where(labels == i)
+        intensity = np.mean(img[ys,xs])
         a,b = int(np.mean(ys)), int(np.mean(xs))
         area = np.sum(labels == i)
-        if area <= 400:
+        if area <= size_filter:
             a = int(scale_factor * a)
             b = int(scale_factor * b)
-            data.append({"Image":f'{directory}/{imid}.phenotype.tif', "x":b, "y":a, "area":area})
+            data.append({"Image":f'{directory}/{imid}.phenotype.tif', "x":b, "y":a, "area":area, "intensity": intensity})
 
-    mni = pd.DataFrame(data=data, columns=["Image","x","y","area"])
+    mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
 
 # PATCH AUGMENTATIONS
@@ -82,12 +85,13 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, transform=None):
+    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
         self.feature_size = feature_size
         self.mode = mode # in [random, fixed]
+        self.edges = edges
         self.transform = transform
         self.shuffled = 0
         
@@ -223,7 +227,7 @@ class MicronucleiDataset(Dataset):
         PS = self.patch_size
         y,x = int(item["coord"][0]), int(item["coord"][1])
         crop = self.images[item["Image"]]["image"][y:y+PS,x:x+PS]
-        crop = patch_to_rgb(crop)
+        crop = patch_to_rgb(crop, self.edges)
         
         # Move labels to a local reference frame
         labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]

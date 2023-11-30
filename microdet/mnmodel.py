@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 import mnds
 import extractor
@@ -18,25 +19,29 @@ import vision_transformer as vit
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, training_files, validation_files, device, scale_factor=1.0):
+    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, scale_factor=1.0):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
         
-        self.training_set = mnds.MicronucleiDataset(
-            filelist=training_files, 
-            directory=data_dir, 
-            mode="random", 
-            transform=mnds.detection_transforms,
-            scale_factor=scale_factor
-        )
+        if len(training_files) > 0:
+            self.training_set = mnds.MicronucleiDataset(
+                filelist=training_files, 
+                directory=data_dir, 
+                mode="random",
+                edges=edges,
+                transform=mnds.detection_transforms,
+                scale_factor=scale_factor
+            )
         
-        self.validation_set = mnds.MicronucleiDataset(
-            filelist=validation_files, 
-            directory=data_dir, 
-            mode="fixed",
-            scale_factor=scale_factor
-        )
+        if len(validation_files) > 0:
+            self.validation_set = mnds.MicronucleiDataset(
+                filelist=validation_files, 
+                directory=data_dir, 
+                mode="fixed",
+                edges=edges,
+                scale_factor=scale_factor
+            )
         
     def start_model(self, batch_size, learning_rate):
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
@@ -45,7 +50,7 @@ class MicronucleiModel():
         self.model = detection.DetectionModel(device=self.device)
         
         self.loss_fn = torch.nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate, momentum=0.9)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -139,4 +144,56 @@ class MicronucleiModel():
     def save(self, outdir="models/"):
         output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
         torch.save(self.model.state_dict(), output_file)
+
         
+    def load(self, model_name, model_dir="models/"):
+        model_file = self.data_dir + model_dir + model_name
+        self.model = detection.DetectionModel(device=self.device)
+        self.model.load_state_dict(torch.load(model_file))
+        self.model.to(self.device)
+        
+        
+    def predict(self, image, stride=8, patch_size=256, step=16, batch_size=512):
+        probabilities = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
+        counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
+        TOKENS_PER_PATCH = patch_size // stride
+        ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
+        batch, coords = [], []
+
+        self.model.eval()
+
+        def batch_predict(batch, coords):
+            B = torch.cat(batch, axis=0)
+            pred0 = self.model(B.to(self.device))
+            P = torch.reshape(pred0, (-1, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
+            P = P.cpu().numpy()
+
+            for c in range(len(coords)):
+                y = coords[c]["a"]
+                x = coords[c]["b"]
+                probabilities[y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += P[c]
+                counts[y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += ones
+            coords = []
+
+
+        with torch.no_grad():
+            for i in tqdm(range(0,image.shape[0]-patch_size+1, step)):
+                a = i // stride
+                for j in range(0,image.shape[1]-patch_size+1, step):
+                    b = j // stride
+                    vin = mnds.patch_to_rgb(image[i:i+patch_size,j:j+patch_size])
+                    batch.append(vin[None,:,:,:])
+                    coords.append({"i":i, "j":j, "a":a, "b":b})
+
+                    if len(batch) == batch_size:
+                        # Get predictions
+                        batch_predict(batch, coords)
+                        batch, coords = [], []
+
+            if len(batch) > 0:
+                batch_predict(batch, coords)
+                batch, coords = [], []
+
+        probabilities = probabilities/counts
+        return probabilities
+    
