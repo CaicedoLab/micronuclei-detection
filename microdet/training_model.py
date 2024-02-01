@@ -5,6 +5,7 @@
 
 
 import os
+import sys
 import torch
 import mnmodel
 
@@ -16,14 +17,20 @@ PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-DIRECTORY = "/home/caicedo/scr/jcaicedo/Micronuclei-data/dataset_v2/"
-OUTPUT_DIR = "experiments/2023-11-12C/models/"
+DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
+OUTPUT_DIR = "experiments/2024-01-31B/models/"
 
 EPOCHS = 20
-BATCH_SIZE = 48
+BATCH_SIZE = 32
 LR = 0.01
 
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+if len(sys.argv) < 3:
+    print("Use: python training_model.py imidx gpu")
+    sys.exit()
+
+i = int(sys.argv[1])
+gpu = sys.argv[2]
+device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
 
 # In[4]:
@@ -31,12 +38,14 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 filelist = os.listdir(DIRECTORY)
 annot_files = [x for x in filelist if x.endswith('png')]
-
+annot_files.sort()
+annot_files = annot_files[0:10]
 
 # In[5]:
 
 
-for i in range(len(annot_files)):
+#for i in range(len(annot_files)):
+if True:
 
     # Leave-one-out split
     training_files = annot_files.copy()

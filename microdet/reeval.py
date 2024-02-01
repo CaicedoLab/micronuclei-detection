@@ -53,8 +53,7 @@ filelist = os.listdir(DIRECTORY)
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 
-predictions_dir = DIRECTORY + "experiments/2024-01-31A/predictions/"
-models_dir = "experiments/2024-01-31A/models/"
+predictions_dir = DIRECTORY + "experiments/2024-01-17/predictions/"
 
 
 # In[4]:
@@ -70,15 +69,21 @@ if True:
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
     gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
     
-    # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(DIRECTORY, device)
-    model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-    probabilities = model.predict(im, stride=STRIDE, patch_size=PATCH_SIZE, step=STEP, batch_size=BATCH_SIZE)
-    filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    np.save(filename, probabilities)
+    # Load predictions
+    filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities.npy')
+    probabilities = np.load(filename)
+    print(probabilities.shape)
+    THRESHOLD = 0.5
+    print("Detections: ",np.sum(probabilities > THRESHOLD))
+    loc = np.where(probabilities > THRESHOLD)
+    masks = np.zeros((probabilities.shape[0]*8, probabilities.shape[1]*8), dtype="uint8")
+    for i in range(len(loc[0])):
+        r = loc[0][i]*8
+        c = loc[1][i]*8
+        masks[r-4:r+4,c-4:c+4] = i + 1 
+    skimage.io.imsave(filename.replace('_probabilities.npy','_detections.png'), masks)
     
     # Run evaluations
     results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)
