@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import scipy
 
+import skimage.morphology
+
 from tqdm import tqdm
 from torch.utils.data import Dataset
 import torchvision.transforms.functional as TF
@@ -101,7 +103,8 @@ class MicronucleiDataset(Dataset):
         for fname in tqdm(filelist):
             imid = fname.split('.')[0]
             im = read_image(directory, imid, 'phenotype.tif', scale_factor)
-            im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
+            im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
+            #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
             mni = read_micronuclei_annotations(directory, imid)
             all_locs.append(mni)
             self.images[imid] = {"image":im, "loc":mni}
@@ -127,7 +130,7 @@ class MicronucleiDataset(Dataset):
             self.transform = None
         else:
             assert False, "Incorrect mode"
-        
+
         
     def randomize_patch_index(self):
         self.shuffled += 1

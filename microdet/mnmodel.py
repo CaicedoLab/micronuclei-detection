@@ -7,6 +7,7 @@ import sklearn.metrics
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch.nn.functional as F
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
@@ -49,7 +50,7 @@ class MicronucleiModel():
         
         self.model = detection.DetectionModel(device=self.device)
         
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
         
         
@@ -119,7 +120,7 @@ class MicronucleiModel():
             for i, vdata in enumerate(self.val_dataloader):
                 # Get predictions
                 vin, vls = vdata
-                pred0 = self.model(vin.to(self.device))
+                pred0 = F.softmax(self.model(vin.to(self.device)), dim=1)
                 P = torch.reshape(pred0, (-1, 32, 32))
                 pred = P.cpu().numpy()
 
@@ -132,7 +133,7 @@ class MicronucleiModel():
         
         # Precision-recall curve
         display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-            GT, PRED, name="Detector", plot_chance_level=True
+            GT, PRED, name="Detector" #, plot_chance_level=True
         )
         _ = display.ax_.set_title("Precision-Recall curve")
         
@@ -164,7 +165,7 @@ class MicronucleiModel():
 
         def batch_predict(batch, coords):
             B = torch.cat(batch, axis=0)
-            pred0 = self.model(B.to(self.device))
+            pred0 = F.softmax(self.model(B.to(self.device)))
             P = torch.reshape(pred0, (-1, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
             P = P.cpu().numpy()
 

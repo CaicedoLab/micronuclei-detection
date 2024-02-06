@@ -37,7 +37,7 @@ def prediction_report(imid, probabilities, gt, threshold, output_dir):
 
     plt.figure(figsize=(6,6))
     display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-        GT, PRED, name="Detector", plot_chance_level=True
+        GT, PRED, name="Detector"#, plot_chance_level=True
     )
     _ = display.ax_.set_title("Precision-Recall curve")
     plt.savefig(f"{output_dir}/{imid}-prcurve.png")
@@ -55,6 +55,7 @@ def prediction_report(imid, probabilities, gt, threshold, output_dir):
     print("Total:",np.sum(ground_truth),"Correct:",np.sum(correct), "Missing:", np.sum(missing), "Extra:", np.sum(extra))
     
     results = {
+        "probabilities": probabilities,
         "predictions": predictions,
         "ground_truth": ground_truth,
         "correct": correct,
@@ -121,5 +122,5 @@ def display_detections(im, imid, results, output_dir):
     df = pd.DataFrame(annotations)
     df["answer"] = ""
     df = df.sort_values(by=["ID","question"])
-    df.to_csv(f"{output_dir}/{imid}-checks.csv")
+    df.to_csv(f"{output_dir}/{imid}-checks.csv", index=False)
 

@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-import extractor
 import vision_transformer as vit
 
 class TruncViT(vit.VisionTransformer):
@@ -32,21 +31,33 @@ class DetectionModel(torch.nn.Module):
     def __init__(self, device, stride=8):
         super(DetectionModel, self).__init__()
         
-        self.feature_extractor = extractor.ViTExtractor('dino_vits8', stride, device=device)
-        self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
-        self.vit_model.to(device)
-        self.classifier = torch.nn.Conv1d(192, 1, 1, 1)
+        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device)
+
+        # With VIT-tiny
+        #self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
+        #self.vit_model.to(device)
+        #self.classifier = torch.nn.Conv1d(192, 1, 1, 1)
+
+        # With linear classifier
+        self.classifier = torch.nn.Conv2d(384, 1, (1,1))
         self.classifier.to(device)
         
     def forward(self, x):
-        x = self.feature_extractor.preprocess_patch(x)
-        x = self.feature_extractor.extract_descriptors(x, 11, 'key', False)
-        B,_,_,C = x.shape
-        T = 32
-        x = x.transpose(3,1).reshape((B,C,T,T))
-        x = self.vit_model(x)
-        x = self.classifier(x.transpose(2,1))
-        x = torch.reshape(x, (-1, T*T+1))[:,1:]
-        x = F.softmax(x, dim=1)
+        with torch.no_grad():
+            x = torch.nn.functional.interpolate(x, (448,448))
+            x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+        B,T,C = x.shape
+        W,H = 32,32
+
+        # With VIT-tiny
+        #x = x.permute(0,2,1).reshape((B,C,W,H))
+        #x = self.vit_model(x)
+        #x = self.classifier(x.permute(0,2,1))
+        #x = torch.reshape(x, (-1, W*H+1))[:,1:]
+
+        # With linear classifier
+        x = self.classifier(x.reshape(B,W,H,C).permute(0,3,1,2))
+        x = torch.reshape(x, (B, W*H))
+        #x = F.softmax(x, dim=1)
         
         return x
