@@ -14,7 +14,6 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import mnds
-import extractor
 import detection
 import vision_transformer as vit
 

@@ -17,10 +17,19 @@ PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
-OUTPUT_DIR = "experiments/2024-01-31B/models/"
+# DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
+# OUTPUT_DIR = "experiments/2024-01-31B/models/"
 
-EPOCHS = 20
+# Reconstructing path in CHTC
+CURRENT_PATH = os.getcwd()
+DIRECTORY = CURRENT_PATH + '/dataset_v2/'
+OUTPUT_DIR = "/model_output/"
+
+# set CHTC writeable cahce directory
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+
+# EPOCHS = 20
+EPOCHS = 5
 BATCH_SIZE = 32
 LR = 0.01
 
@@ -36,7 +45,8 @@ device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 # In[4]:
 
 
-filelist = os.listdir(DIRECTORY)
+files = os.listdir(DIRECTORY)
+filelist = [file for file in files if not file.startswith('.')]
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 annot_files = annot_files[0:10]
