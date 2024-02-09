@@ -10,11 +10,11 @@ log = log/job$(Cluster).log
 error = error/job$(Cluster).err
 output = output/job$(Cluster).out
 
+transfer_input_files = microdet.tar.gz
+transfer_output_files = microdet/dataset_v2/model_output
+
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
-
-# make all codes and images into two separated zip files
-transfer_input_files = microdet.tar.gz
 
 request_cpus = 1
 request_gpus = 4

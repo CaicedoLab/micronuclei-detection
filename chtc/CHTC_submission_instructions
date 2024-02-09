@@ -1,0 +1,9 @@
+# If you have tar -xvf manipulation on CHTC
+
+files = os.listdir(DIRECTORY)
+filelist = [file for file in files if not file.startswith('.')]
+
+`Then remember to remove files start with . which are metadata generated in MacOS systems during untar` 
+
+# Set TORCH_HOME to writeable directory in CHTC
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
