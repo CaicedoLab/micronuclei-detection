@@ -7,4 +7,4 @@ cd microdet
 
 
 # usage: python3 training_model image_index number_of_gpus
-python3 training_model.py 0 4
+python3 training_model.py 0 0

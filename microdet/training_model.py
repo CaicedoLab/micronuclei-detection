@@ -29,7 +29,7 @@ OUTPUT_DIR = "/model_output/"
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 
 # EPOCHS = 20
-EPOCHS = 5
+EPOCHS = 10
 BATCH_SIZE = 32
 LR = 0.01
 

@@ -1,12 +1,12 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/mndetection:v0.2
+docker_image = yasuo0810/dinov2_chtc:v0.1
 
 # set the executable to run
 executable = ./run.sh
 # set the log, error and output files
-log = log/log$(Cluster).log
+log = log/interactive.log
 error = error/job$(Cluster).err
 output = output/job$(Cluster).out
 
@@ -17,7 +17,7 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 
 request_cpus = 1
-request_gpus = 4
+request_gpus = 1
 
 +WantGPULab = true
 +GPUJobLength = "medium"
@@ -26,6 +26,5 @@ request_memory = 30GB
 request_disk = 10GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
-# Requirements = (Target.CUDADriverVersion >= 10.1)
 
 queue
