@@ -1,8 +1,6 @@
 #!/bin/bash
 tar -xvf microdet.tar.gz
-# tar -xvf dataset_v2.tar.gz
 rm microdet.tar.gz
-# rm dataset_v2.tar.gz
 cd microdet
 
 

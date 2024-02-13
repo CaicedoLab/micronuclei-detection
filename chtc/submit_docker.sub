@@ -6,7 +6,7 @@ docker_image = yasuo0810/dinov2_chtc:v0.1
 # set the executable to run
 executable = ./run.sh
 # set the log, error and output files
-log = log/interactive.log
+log = log/log$(Cluster).log
 error = error/job$(Cluster).err
 output = output/job$(Cluster).out
 
