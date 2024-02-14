@@ -34,6 +34,9 @@ STEP = 16
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 
+# set CHTC writeable cahce directory
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+
 BATCH_SIZE = 480
 EPOCHS = 20
 LR = 0.01
