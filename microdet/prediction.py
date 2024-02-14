@@ -67,9 +67,13 @@ annot_files.sort()
 # models_dir = "experiments/2024-01-31A/models/"
 
 
-predictions_dir = DIRECTORY + "/model_output/reproduced_base_model/"
-models_dir = "/model_output/reproduced_base_model/" # under microdet folder in CHTC, mnmodel will load the DIRECTORY which leads to dataset_v2 folder
+# directory for small model
+# predictions_dir = DIRECTORY + "/model_output/reproduced_small_model/"
+# models_dir = "/model_output/reproduced_small_model/" # under microdet folder in CHTC, mnmodel will load the DIRECTORY which leads to dataset_v2 folder
 
+# directory for base model
+predictions_dir = DIRECTORY + "/model_output/dinov2_base_model/"
+models_dir = "/model_output/dinov2_base_model/"
 
 # In[4]:
 

@@ -24,7 +24,7 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
-# OUTPUT_DIR = "/model_output/reproduced_base_model/" # directory for reproducing base results, dinov2 vit small model
+# OUTPUT_DIR = "/model_output/reproduced_small_model/" # directory for reproducing base results, dinov2 vit small model
 OUTPUT_DIR = "/model_output/dinov2_base_model" # dinov2 vit base model directory
 
 # set CHTC writeable cahce directory
