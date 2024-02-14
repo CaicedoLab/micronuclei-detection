@@ -23,13 +23,12 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
-OUTPUT_DIR = "/model_output/"
+OUTPUT_DIR = "/model_output/reproduced_base_model/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 
-# EPOCHS = 20
-EPOCHS = 10
+EPOCHS = 20
 BATCH_SIZE = 32
 LR = 0.01
 
@@ -45,6 +44,7 @@ device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 # In[4]:
 
 
+# avoid files starting with . when untarring in CHTC
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')]
 annot_files = [x for x in filelist if x.endswith('png')]

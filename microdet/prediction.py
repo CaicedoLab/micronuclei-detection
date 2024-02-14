@@ -29,7 +29,10 @@ FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 
-DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
+# DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
+
+CURRENT_PATH = os.getcwd()
+DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 
 BATCH_SIZE = 480
 EPOCHS = 20
@@ -49,12 +52,17 @@ device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 # In[3]:
 
 
-filelist = os.listdir(DIRECTORY)
+# avoid files starting with . when untarring in CHTC
+files = os.listdir(DIRECTORY)
+filelist = [file for file in files if not file.startswith('.')]
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 
-predictions_dir = DIRECTORY + "experiments/2024-01-31A/predictions/"
-models_dir = "experiments/2024-01-31A/models/"
+# predictions_dir = DIRECTORY + "experiments/2024-01-31A/predictions/"
+# models_dir = "experiments/2024-01-31A/models/"
+
+predictions_dir = CURRENT_PATH + "/model_output/reproduced_base_model/"
+models_dir = "/model_output/reproduced_base_model/"
 
 
 # In[4]:
