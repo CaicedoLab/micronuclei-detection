@@ -15,7 +15,8 @@ SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
 STRIDE = 8
-FEATURE_SIZE = 384
+# FEATURE_SIZE = 384 # dinov2 vit small model
+FEATURE_SIZE = 768 # dinov2 vit base model
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
 # OUTPUT_DIR = "experiments/2024-01-31B/models/"
@@ -23,7 +24,8 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
-OUTPUT_DIR = "/model_output/reproduced_base_model/"
+# OUTPUT_DIR = "/model_output/reproduced_base_model/" # directory for reproducing base results, dinov2 vit small model
+OUTPUT_DIR = "/model_output/dinov2_base_model" # dinov2 vit base model directory
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'

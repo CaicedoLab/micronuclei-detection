@@ -31,7 +31,8 @@ class DetectionModel(torch.nn.Module):
     def __init__(self, device, stride=8):
         super(DetectionModel, self).__init__()
         
-        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device)
+        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg_lc').to(device) # dinov2 vit base model
 
         # With VIT-tiny
         #self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
@@ -39,7 +40,8 @@ class DetectionModel(torch.nn.Module):
         #self.classifier = torch.nn.Conv1d(192, 1, 1, 1)
 
         # With linear classifier
-        self.classifier = torch.nn.Conv2d(384, 1, (1,1))
+        # self.classifier = torch.nn.Conv2d(384, 1, (1,1)) # num of features for small model
+        self.classifier = torch.nn.Conv2d(768, 1, (1,1)) # num of features for base model
         self.classifier.to(device)
         
     def forward(self, x):

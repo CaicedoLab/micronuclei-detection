@@ -25,7 +25,8 @@ SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
 STRIDE = 8
-FEATURE_SIZE = 384
+# FEATURE_SIZE = 384 # dinov2 vit small model
+FEATURE_SIZE = 768 # dinov2 vit base model
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 
@@ -34,8 +35,9 @@ STEP = 16
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 
-# set CHTC writeable cahce directory
+# set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 BATCH_SIZE = 480
 EPOCHS = 20
@@ -64,8 +66,9 @@ annot_files.sort()
 # predictions_dir = DIRECTORY + "experiments/2024-01-31A/predictions/"
 # models_dir = "experiments/2024-01-31A/models/"
 
-predictions_dir = CURRENT_PATH + "/model_output/reproduced_base_model/"
-models_dir = "/model_output/reproduced_base_model/"
+
+predictions_dir = DIRECTORY + "/model_output/reproduced_base_model/"
+models_dir = "/model_output/reproduced_base_model/" # under microdet folder in CHTC, mnmodel will load the DIRECTORY which leads to dataset_v2 folder
 
 
 # In[4]:
