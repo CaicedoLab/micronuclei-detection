@@ -3,6 +3,7 @@ import time
 import torch
 import skimage
 import sklearn.metrics
+from torchvision.ops import sigmoid_focal_loss
 
 import numpy as np
 import pandas as pd
@@ -65,8 +66,10 @@ class MicronucleiModel():
 
             # Loss function
             Y = torch.reshape(y, (-1, 32*32)).to(self.device)
-            loss = self.loss_fn(p, Y)
-
+            # loss = self.loss_fn(p, Y)
+            loss = sigmoid_focal_loss(p, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(p, Y)
+            # print(f'Loss shape: {loss.shape}')
+            
             # Training instructions
             loss.backward()
             self.optimizer.step()
@@ -98,7 +101,8 @@ class MicronucleiModel():
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
                     Y = torch.reshape(vls, (-1, 32*32)).to(self.device)
-                    vloss = self.loss_fn(vout, Y)
+                    # vloss = self.loss_fn(vout, Y)
+                    vloss = sigmoid_focal_loss(vout, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(vout, Y)
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T

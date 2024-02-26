@@ -31,8 +31,8 @@ class DetectionModel(torch.nn.Module):
     def __init__(self, device, stride=8):
         super(DetectionModel, self).__init__()
         
-        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
-        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg_lc').to(device) # dinov2 vit base model
+        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg').to(device) # dinov2 vit base model
 
         # With VIT-tiny
         #self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
@@ -41,14 +41,35 @@ class DetectionModel(torch.nn.Module):
 
         # With linear classifier
         # self.classifier = torch.nn.Conv2d(384, 1, (1,1)) # num of features for small model
-        self.classifier = torch.nn.Conv2d(768, 1, (1,1)) # num of features for base model
-        self.classifier.to(device)
+        # self.classifier = torch.nn.Conv2d(768, 1, (1,1)) # num of features for base model
+        # self.classifier.to(device)
         
+        self.conv1_layer = torch.nn.Conv2d(in_channels=384, out_channels=768, kernel_size=(1,1))
+        self.conv1_layer.to(device)
+        self.relu1 = torch.nn.ReLU()
+        self.relu1.to(device)
+
+
+        self.conv2_layer = torch.nn.Conv2d(in_channels=768, out_channels=256, kernel_size=(1,1))
+        self.conv2_layer.to(device)
+        self.relu2 = torch.nn.ReLU()
+        self.relu2.to(device)
+
+        self.conv3_layer = torch.nn.Conv2d(in_channels=256, out_channels=128, kernel_size=(1,1))
+        self.conv3_layer.to(device)
+        self.relu3 = torch.nn.ReLU()
+        self.relu3.to(device)
+
+        # classification layer
+        self.classifier = torch.nn.Conv2d(in_channels=128, out_channels=1, kernel_size=(1,1))
+        self.classifier.to(device)
+
+                
     def forward(self, x):
         with torch.no_grad():
             x = torch.nn.functional.interpolate(x, (448,448))
             x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-        B,T,C = x.shape
+        B,T,C = x.shape # 32, 1024, 384; Batch, Token, Channel
         W,H = 32,32
 
         # With VIT-tiny
@@ -57,9 +78,22 @@ class DetectionModel(torch.nn.Module):
         #x = self.classifier(x.permute(0,2,1))
         #x = torch.reshape(x, (-1, W*H+1))[:,1:]
 
+        
         # With linear classifier
-        x = self.classifier(x.reshape(B,W,H,C).permute(0,3,1,2))
-        x = torch.reshape(x, (B, W*H))
+        # x (batch of tokens) shape: (32, 384, 32, 32), input image format for CNN (batch, # of channels, height, width)
+        x = x.reshape(B,W,H,C).permute(0,3,1,2)
+        
+        # x = self.classifier(x) # classifier turn 384 channels to 1 here
+        
+        x = self.conv1_layer(x)
+        x = self.relu1(x)
+        x = self.conv2_layer(x)
+        x = self.relu2(x)
+        x = self.conv3_layer(x)
+        x = self.relu3(x)
+        x = self.classifier(x)
+
+        x = torch.reshape(x, (B, W*H)) # reshape to Batch size (32) * # of Tokens (1024)
         #x = F.softmax(x, dim=1)
         
         return x

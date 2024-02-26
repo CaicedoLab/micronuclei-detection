@@ -25,8 +25,8 @@ SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
 STRIDE = 8
-# FEATURE_SIZE = 384 # dinov2 vit small model
-FEATURE_SIZE = 768 # dinov2 vit base model
+FEATURE_SIZE = 384 # dinov2 vit small model
+# FEATURE_SIZE = 768 # dinov2 vit base model
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 
@@ -39,7 +39,8 @@ DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
-BATCH_SIZE = 480
+# BATCH_SIZE = 480 # too big for dinov2b in cuda
+BATCH_SIZE = 32
 EPOCHS = 20
 LR = 0.01
 
@@ -72,8 +73,12 @@ annot_files.sort()
 # models_dir = "/model_output/reproduced_small_model/" # under microdet folder in CHTC, mnmodel will load the DIRECTORY which leads to dataset_v2 folder
 
 # directory for base model
-predictions_dir = DIRECTORY + "/model_output/dinov2_base_model/"
-models_dir = "/model_output/dinov2_base_model/"
+# predictions_dir = DIRECTORY + "/model_output/dinov2_base_model/"
+# models_dir = "/model_output/dinov2_base_model/"
+
+# expriment directory with dinov2 small
+predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment8/"
+models_dir = "/model_output/dinov2s_experiment8/" 
 
 # In[4]:
 
