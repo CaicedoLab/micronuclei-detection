@@ -8,4 +8,4 @@ cd microdet
 # python3 training_model.py 0 0
 for i in $(seq 0 9); do
     python3 training_model.py $i 0
-done
+done > train_output.txt

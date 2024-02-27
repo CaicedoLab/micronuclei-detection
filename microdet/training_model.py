@@ -26,14 +26,15 @@ CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 # OUTPUT_DIR = "/model_output/reproduced_small_model/" # directory for reproducing base results, dinov2 vit small model
 # OUTPUT_DIR = "/model_output/dinov2_base_model/" # dinov2 vit base model directory
-OUTPUT_DIR = "/model_output/dinov2s_experiment8/"
+OUTPUT_DIR = "/model_output/dinov2s_experiment10/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 
 EPOCHS = 20
 BATCH_SIZE = 32
-LR = 0.01
+# LR = 0.01
+LR = 0.001
 
 if len(sys.argv) < 3:
     print("Use: python training_model.py imidx gpu")

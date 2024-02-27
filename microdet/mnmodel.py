@@ -52,6 +52,7 @@ class MicronucleiModel():
         
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.1)
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -66,13 +67,15 @@ class MicronucleiModel():
 
             # Loss function
             Y = torch.reshape(y, (-1, 32*32)).to(self.device)
-            # loss = self.loss_fn(p, Y)
-            loss = sigmoid_focal_loss(p, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(p, Y)
+            loss = self.loss_fn(p, Y)
+            # loss = sigmoid_focal_loss(p, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(p, Y)
             # print(f'Loss shape: {loss.shape}')
             
             # Training instructions
             loss.backward()
+            
             self.optimizer.step()
+            self.scheduler.step()
 
             # Report results
             running_loss += loss.item()
@@ -101,8 +104,8 @@ class MicronucleiModel():
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
                     Y = torch.reshape(vls, (-1, 32*32)).to(self.device)
-                    # vloss = self.loss_fn(vout, Y)
-                    vloss = sigmoid_focal_loss(vout, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(vout, Y)
+                    vloss = self.loss_fn(vout, Y)
+                    # vloss = sigmoid_focal_loss(vout, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(vout, Y)
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T

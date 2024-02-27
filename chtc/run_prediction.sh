@@ -6,4 +6,4 @@ cd microdet
 # usage: python3 prediction.py imidx gpu
 for i in $(seq 0 9); do
     python3 prediction.py $i 0
-done
+done > prediction_output.txt

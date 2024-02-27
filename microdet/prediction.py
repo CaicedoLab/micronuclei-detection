@@ -39,10 +39,10 @@ DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
-# BATCH_SIZE = 480 # too big for dinov2b in cuda
+
 BATCH_SIZE = 32
 EPOCHS = 20
-LR = 0.01
+LR = 0.001
 
 THRESHOLD = 0.25
 
@@ -77,8 +77,8 @@ annot_files.sort()
 # models_dir = "/model_output/dinov2_base_model/"
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment8/"
-models_dir = "/model_output/dinov2s_experiment8/" 
+predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment10/"
+models_dir = "/model_output/dinov2s_experiment10/" 
 
 # In[4]:
 

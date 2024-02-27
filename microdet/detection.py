@@ -31,7 +31,10 @@ class DetectionModel(torch.nn.Module):
     def __init__(self, device, stride=8):
         super(DetectionModel, self).__init__()
         
+        # pretrained backbone has patch size 14 x 14, split into 14 row and columns
         self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+           
+       
         # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg').to(device) # dinov2 vit base model
 
         # With VIT-tiny
@@ -66,10 +69,13 @@ class DetectionModel(torch.nn.Module):
 
                 
     def forward(self, x):
-        with torch.no_grad():
-            x = torch.nn.functional.interpolate(x, (448,448))
-            x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-        B,T,C = x.shape # 32, 1024, 384; Batch, Token, Channel
+        # with torch.no_grad():
+        # Before interpolate, shape: 32, 3, 256, 256
+        x = torch.nn.functional.interpolate(x, (448,448))
+        # pretrained backbone has 14 patch size (split into 14 rows & cols)
+        # thus using interpolate we can get token size/resolution 32 x 32
+        x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+        B,T,C = x.shape # Batch, Token size * Toekn size, Channel
         W,H = 32,32
 
         # With VIT-tiny
