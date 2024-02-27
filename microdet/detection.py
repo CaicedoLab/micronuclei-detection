@@ -69,12 +69,12 @@ class DetectionModel(torch.nn.Module):
 
                 
     def forward(self, x):
-        # with torch.no_grad():
-        # Before interpolate, shape: 32, 3, 256, 256
-        x = torch.nn.functional.interpolate(x, (448,448))
-        # pretrained backbone has 14 patch size (split into 14 rows & cols)
-        # thus using interpolate we can get token size/resolution 32 x 32
-        x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+        with torch.no_grad():
+            # Before interpolate, shape: 32, 3, 256, 256
+            x = torch.nn.functional.interpolate(x, (448,448))
+            # pretrained backbone has 14 patch size (split into 14 rows & cols)
+            # thus using interpolate we can get token size/resolution 32 x 32
+            x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
         B,T,C = x.shape # Batch, Token size * Toekn size, Channel
         W,H = 32,32
 

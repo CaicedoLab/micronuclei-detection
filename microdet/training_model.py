@@ -26,7 +26,7 @@ CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2/'
 # OUTPUT_DIR = "/model_output/reproduced_small_model/" # directory for reproducing base results, dinov2 vit small model
 # OUTPUT_DIR = "/model_output/dinov2_base_model/" # dinov2 vit base model directory
-OUTPUT_DIR = "/model_output/dinov2s_experiment10/"
+OUTPUT_DIR = "/model_output/pixel_decoder1/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
