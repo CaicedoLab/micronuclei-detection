@@ -59,6 +59,13 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
 
+
+def read_micronuclei_masks(directory, imid, scale_factor=1.0):
+    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
+    otl = otl[:,:,0] > 0 # Use only the red channel
+    mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
+    return mask
+
 # PATCH AUGMENTATIONS
 def detection_transforms(patch, target):
     # Rotations
@@ -106,8 +113,9 @@ class MicronucleiDataset(Dataset):
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
             #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
             mni = read_micronuclei_annotations(directory, imid)
+            mnm = read_micronuclei_masks(directory, imid)
             all_locs.append(mni)
-            self.images[imid] = {"image":im, "loc":mni}
+            self.images[imid] = {"image":im, "mask":mnm, "loc":mni}
             #break
             
         self.all_locs = pd.concat(all_locs)
@@ -228,22 +236,26 @@ class MicronucleiDataset(Dataset):
         
         # Crop patches out of the full image
         PS = self.patch_size
-        y,x = int(item["coord"][0]), int(item["coord"][1])
-        crop = self.images[item["Image"]]["image"][y:y+PS,x:x+PS]
+        r,c = int(item["coord"][0]), int(item["coord"][1])
+        crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
+        mask = self.images[item["Image"]]["mask"][r:r+PS,c:c+PS]
         crop = patch_to_rgb(crop, self.edges)
         
         # Move labels to a local reference frame
-        labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
-        grid = np.zeros((32,32))
-        for c in labels:
-            grid[c[0],c[1]] = 1.0
+        #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
+        #grid = np.zeros((32,32))
+        #for c in labels:
+        #    grid[c[0],c[1]] = 1.0
         
         # Apply augmentations
         if self.mode == "random" and self.transform is not None:
-            grid = patch_to_rgb(grid, edges=False)
-            crop, grid = self.transform(crop, grid)
-            grid = grid[0,:,:]
+            #grid = patch_to_rgb(grid, edges=False)
+            #crop, grid = self.transform(crop, grid)
+            #grid = grid[0,:,:]
+            mask = patch_to_rgb(mask, edges=False)
+            crop, mask = self.transform(crop, mask)
+            mask = mask[0,:,:]
             
-        return crop, grid
+        return crop, mask
         
         
