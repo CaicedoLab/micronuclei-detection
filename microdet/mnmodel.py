@@ -66,7 +66,7 @@ class MicronucleiModel():
             p = self.model(x.to(self.device))
 
             # Loss function
-            Y = torch.reshape(y, (-1, 32*32)).to(self.device)
+            Y = torch.reshape(y, (-1, 256, 256)).to(self.device)
             loss = self.loss_fn(p, Y)
             # loss = sigmoid_focal_loss(p, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(p, Y)
             # print(f'Loss shape: {loss.shape}')
@@ -103,7 +103,8 @@ class MicronucleiModel():
                 for i, vdata in enumerate(self.val_dataloader):
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
-                    Y = torch.reshape(vls, (-1, 32*32)).to(self.device)
+                    Y = torch.reshape(vls, (-1, 256, 256)).to(self.device)
+                    print(vout.shape, vout.dtype)
                     vloss = self.loss_fn(vout, Y)
                     # vloss = sigmoid_focal_loss(vout, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(vout, Y)
                     running_vloss += vloss

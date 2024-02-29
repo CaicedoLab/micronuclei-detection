@@ -99,7 +99,9 @@ class DetectionModel(torch.nn.Module):
         x = self.relu3(x)
         x = self.classifier(x)
 
-        x = torch.reshape(x, (B, W*H)) # reshape to Batch size (32) * # of Tokens (1024)
+        #x = torch.reshape(x, (B, W*H)) # reshape to Batch size (32) * # of Tokens (1024)
+        x = torch.nn.functional.interpolate(x, (256, 256))
+        x = x.squeeze(dim=1)
         #x = F.softmax(x, dim=1)
         
         return x
