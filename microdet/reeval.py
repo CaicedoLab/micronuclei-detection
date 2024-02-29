@@ -53,7 +53,7 @@ filelist = os.listdir(DIRECTORY)
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 
-predictions_dir = DIRECTORY + "experiments/2024-01-17/predictions/"
+predictions_dir = DIRECTORY + "experiments/2024-01-31B/predictions/"
 
 
 # In[4]:
@@ -75,7 +75,6 @@ if True:
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities.npy')
     probabilities = np.load(filename)
     print(probabilities.shape)
-    THRESHOLD = 0.5
     print("Detections: ",np.sum(probabilities > THRESHOLD))
     loc = np.where(probabilities > THRESHOLD)
     masks = np.zeros((probabilities.shape[0]*8, probabilities.shape[1]*8), dtype="uint8")
