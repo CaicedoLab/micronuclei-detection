@@ -20,7 +20,7 @@ import vision_transformer as vit
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, scale_factor=1.0):
+    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
@@ -32,7 +32,8 @@ class MicronucleiModel():
                 mode="random",
                 edges=edges,
                 transform=mnds.detection_transforms,
-                scale_factor=scale_factor
+                scale_factor=scale_factor,
+                patch_size=patch_size
             )
         
         if len(validation_files) > 0:
@@ -41,7 +42,8 @@ class MicronucleiModel():
                 directory=data_dir, 
                 mode="fixed",
                 edges=edges,
-                scale_factor=scale_factor
+                scale_factor=scale_factor,
+                patch_size=patch_size
             )
         
     def start_model(self, batch_size, learning_rate):
@@ -52,7 +54,11 @@ class MicronucleiModel():
         
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.1)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=self.optimizer,
+            T_max=4,
+            verbose=True
+        )
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -75,8 +81,7 @@ class MicronucleiModel():
             loss.backward()
             
             self.optimizer.step()
-            self.scheduler.step()
-
+            
             # Report results
             running_loss += loss.item()
         return running_loss / i
@@ -95,6 +100,9 @@ class MicronucleiModel():
             T = time.time()
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, None)
+            
+            # Update Learning Rate
+            self.scheduler.step()
 
             # Validation
             running_vloss = 0.0

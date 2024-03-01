@@ -33,7 +33,7 @@ STEP = 16
 # DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/dataset_v2/'
+DIRECTORY = CURRENT_PATH + '/dataset_v2'
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
@@ -42,7 +42,7 @@ os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 BATCH_SIZE = 32
 EPOCHS = 20
-LR = 0.001
+LR = 0.0001
 
 THRESHOLD = 0.25
 
@@ -77,8 +77,8 @@ annot_files.sort()
 # models_dir = "/model_output/dinov2_base_model/"
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment10/"
-models_dir = "/model_output/dinov2s_experiment10/" 
+predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment12/"
+models_dir = "/model_output/dinov2s_experiment12/" 
 
 # In[4]:
 
@@ -97,7 +97,7 @@ if True:
     gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
     
     # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(DIRECTORY, device)
+    model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE)
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
     probabilities = model.predict(im, stride=STRIDE, patch_size=PATCH_SIZE, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
