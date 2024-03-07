@@ -18,23 +18,18 @@ STRIDE = 8
 FEATURE_SIZE = 384 # dinov2 vit small model
 # FEATURE_SIZE = 768 # dinov2 vit base model
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-# DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
-# OUTPUT_DIR = "experiments/2024-01-31B/models/"
 
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/dataset_v2/'
-# OUTPUT_DIR = "/model_output/reproduced_small_model/" # directory for reproducing base results, dinov2 vit small model
-# OUTPUT_DIR = "/model_output/dinov2_base_model/" # dinov2 vit base model directory
-OUTPUT_DIR = "/model_output/pixel_decoder1/"
+DIRECTORY = CURRENT_PATH + '/dataset_v2'
+OUTPUT_DIR = "/model_output/pixel_decoder2/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 
 EPOCHS = 20
 BATCH_SIZE = 32
-# LR = 0.01
-LR = 0.001
+LR = 0.0001
 
 if len(sys.argv) < 3:
     print("Use: python training_model.py imidx gpu")
@@ -69,10 +64,17 @@ if True:
     print(" *** ", validation_files, " *** ")
 
     # Create model
-    model = mnmodel.MicronucleiModel(DIRECTORY, device, training_files=training_files, validation_files=validation_files, scale_factor=SCALE_FACTOR)
+    model = mnmodel.MicronucleiModel(
+        DIRECTORY, 
+        device, 
+        training_files=training_files, 
+        validation_files=validation_files, 
+        patch_size=PATCH_SIZE,
+        scale_factor=SCALE_FACTOR
+    )
     
     # Train
-    model.train(EPOCHS, BATCH_SIZE, LR)
+    model.train(EPOCHS, BATCH_SIZE, LR, output_dir=OUTPUT_DIR)
     
     # Validate
     model.validate()

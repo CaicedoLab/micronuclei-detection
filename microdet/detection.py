@@ -33,75 +33,43 @@ class DetectionModel(torch.nn.Module):
         
         # pretrained backbone has patch size 14 x 14, split into 14 row and columns
         self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
-           
-       
-        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg').to(device) # dinov2 vit base model
 
-        # With VIT-tiny
-        #self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
-        #self.vit_model.to(device)
-        #self.classifier = torch.nn.Conv1d(192, 1, 1, 1)
-
-        # With linear classifier
-        # self.classifier = torch.nn.Conv2d(384, 1, (1,1)) # num of features for small model
-        # self.classifier = torch.nn.Conv2d(768, 1, (1,1)) # num of features for base model
-        # self.classifier.to(device)
-        
-        self.conv1_layer = torch.nn.Conv2d(in_channels=384, out_channels=768, kernel_size=(1,1))
-        self.conv1_layer.to(device)
-        self.relu1 = torch.nn.ReLU()
-        self.relu1.to(device)
-
-
-        self.conv2_layer = torch.nn.Conv2d(in_channels=768, out_channels=256, kernel_size=(1,1))
-        self.conv2_layer.to(device)
-        self.relu2 = torch.nn.ReLU()
-        self.relu2.to(device)
-
-        self.conv3_layer = torch.nn.Conv2d(in_channels=256, out_channels=128, kernel_size=(1,1))
-        self.conv3_layer.to(device)
-        self.relu3 = torch.nn.ReLU()
-        self.relu3.to(device)
+        self.decoder = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=(2,2), stride=2),
+            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.ReLU(),
+            
+            torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2),
+            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.ReLU(),
+            
+            torch.nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=(2,2), stride=2),
+            torch.nn.Conv2d(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1)), 
+            torch.nn.ReLU()
+        )
+        self.decoder.to(device)
 
         # classification layer
-        self.classifier = torch.nn.Conv2d(in_channels=128, out_channels=1, kernel_size=(1,1))
+        self.classifier = torch.nn.Conv2d(in_channels=48, out_channels=1, kernel_size=(1,1))
         self.classifier.to(device)
 
                 
     def forward(self, x):
         with torch.no_grad():
-            # Before interpolate, shape: 32, 3, 256, 256
             x = torch.nn.functional.interpolate(x, (448,448))
-            # pretrained backbone has 14 patch size (split into 14 rows & cols)
-            # thus using interpolate we can get token size/resolution 32 x 32
             x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
         B,T,C = x.shape # Batch, Token size * Toekn size, Channel
         W,H = 32,32
 
-        # With VIT-tiny
-        #x = x.permute(0,2,1).reshape((B,C,W,H))
-        #x = self.vit_model(x)
-        #x = self.classifier(x.permute(0,2,1))
-        #x = torch.reshape(x, (-1, W*H+1))[:,1:]
 
-        
-        # With linear classifier
-        # x (batch of tokens) shape: (32, 384, 32, 32), input image format for CNN (batch, # of channels, height, width)
+        # x shape after backbone: (32, 384, H, W), input image format for CNN (batch, # of channels, height, width)
         x = x.reshape(B,W,H,C).permute(0,3,1,2)
         
-        # x = self.classifier(x) # classifier turn 384 channels to 1 here
-        
-        x = self.conv1_layer(x)
-        x = self.relu1(x)
-        x = self.conv2_layer(x)
-        x = self.relu2(x)
-        x = self.conv3_layer(x)
-        x = self.relu3(x)
+        x = self.decoder(x)
         x = self.classifier(x)
+        x = x.squeeze(dim=1)
 
         #x = torch.reshape(x, (B, W*H)) # reshape to Batch size (32) * # of Tokens (1024)
-        x = torch.nn.functional.interpolate(x, (256, 256))
-        x = x.squeeze(dim=1)
-        #x = F.softmax(x, dim=1)
+        # x = torch.nn.functional.interpolate(x, (448, 448)) 
         
         return x

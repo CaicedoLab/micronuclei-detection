@@ -33,18 +33,17 @@ STEP = 16
 # DIRECTORY = "/dgx1nas1/storage/data/jcaicedo/micronuclei/data/dataset_v2/"
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/dataset_v2/'
+DIRECTORY = CURRENT_PATH + '/dataset_v2'
+
+BATCH_SIZE = 32
+EPOCHS = 20
+LR = 0.0001
+
+THRESHOLD = 0.25
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
-
-
-BATCH_SIZE = 32
-EPOCHS = 20
-LR = 0.001
-
-THRESHOLD = 0.25
 
 if len(sys.argv) < 3:
     print("Use: prediction.py imidx gpu")
@@ -64,21 +63,10 @@ filelist = [file for file in files if not file.startswith('.')]
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 
-# predictions_dir = DIRECTORY + "experiments/2024-01-31A/predictions/"
-# models_dir = "experiments/2024-01-31A/models/"
-
-
-# directory for small model
-# predictions_dir = DIRECTORY + "/model_output/reproduced_small_model/"
-# models_dir = "/model_output/reproduced_small_model/" # under microdet folder in CHTC, mnmodel will load the DIRECTORY which leads to dataset_v2 folder
-
-# directory for base model
-# predictions_dir = DIRECTORY + "/model_output/dinov2_base_model/"
-# models_dir = "/model_output/dinov2_base_model/"
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/pixel_decoder1/"
-models_dir = "/model_output/pixel_decoder1/" 
+predictions_dir = DIRECTORY + "/model_output/pixel_decoder2/"
+models_dir = "/model_output/pixel_decoder2/" 
 
 # In[4]:
 
@@ -97,9 +85,9 @@ if True:
     gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
     
     # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(DIRECTORY, device)
+    model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE)
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-    probabilities = model.predict(im, stride=STRIDE, patch_size=PATCH_SIZE, step=STEP, batch_size=BATCH_SIZE)
+    probabilities = model.predict(im, stride=STRIDE, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
     

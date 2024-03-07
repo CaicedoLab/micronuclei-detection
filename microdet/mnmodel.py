@@ -3,7 +3,7 @@ import time
 import torch
 import skimage
 import sklearn.metrics
-from torchvision.ops import sigmoid_focal_loss
+import torchvision
 
 import numpy as np
 import pandas as pd
@@ -20,10 +20,11 @@ import vision_transformer as vit
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, scale_factor=1.0):
+    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
+        self.patch_size = patch_size
         
         if len(training_files) > 0:
             self.training_set = mnds.MicronucleiDataset(
@@ -32,7 +33,8 @@ class MicronucleiModel():
                 mode="random",
                 edges=edges,
                 transform=mnds.detection_transforms,
-                scale_factor=scale_factor
+                scale_factor=scale_factor,
+                patch_size=patch_size
             )
         
         if len(validation_files) > 0:
@@ -41,10 +43,12 @@ class MicronucleiModel():
                 directory=data_dir, 
                 mode="fixed",
                 edges=edges,
-                scale_factor=scale_factor
+                scale_factor=scale_factor,
+                patch_size=patch_size
             )
         
     def start_model(self, batch_size, learning_rate):
+        # batch_size means number of images for each batch
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
@@ -52,7 +56,10 @@ class MicronucleiModel():
         
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.1)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=self.optimizer,
+            T_max=4
+        )
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -66,23 +73,26 @@ class MicronucleiModel():
             p = self.model(x.to(self.device))
 
             # Loss function
-            Y = torch.reshape(y, (-1, 256, 256)).to(self.device)
+            Y = torch.reshape(y, (-1, self.patch_size, self.patch_size)).to(self.device).float()
             loss = self.loss_fn(p, Y)
-            # loss = sigmoid_focal_loss(p, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(p, Y)
-            # print(f'Loss shape: {loss.shape}')
             
             # Training instructions
             loss.backward()
             
             self.optimizer.step()
-            self.scheduler.step()
 
             # Report results
             running_loss += loss.item()
         return running_loss / i
     
     
-    def train(self, epochs, batch_size, learning_rate):
+    def train(self, epochs, batch_size, learning_rate, output_dir):
+        def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
+            if (batch_idx % 10 == 0) and (epoch_idx in [0, 10, 19]): 
+                # roughly 31 batches for validation files
+                torchvision.utils.save_image(prediction, pred_path)
+                torchvision.utils.save_image(ground_truth, gt_path)
+        
         self.start_model(batch_size, learning_rate)
         
         best_vloss = 1_000_000.
@@ -95,18 +105,50 @@ class MicronucleiModel():
             T = time.time()
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, None)
+            
+            # Update Learning Rate
+            # self.scheduler.step()
 
             # Validation
             running_vloss = 0.0
             self.model.eval()
             with torch.no_grad():
                 for i, vdata in enumerate(self.val_dataloader):
+                    # roughly 31 batches, each batch has 4 images
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
-                    Y = torch.reshape(vls, (-1, 256, 256)).to(self.device)
-                    print(vout.shape, vout.dtype)
+                    Y = torch.reshape(vls, (-1, self.patch_size, self.patch_size)).to(self.device).float()
+                    
+                    # here Y contains 4 image, we get the middle one
+                    # print(f'Prediction Shape: {vout.shape}')
+                    # print(f'Ground Truth Shape: {Y.shape}')
+                    
+                    # save validation image
+                    filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
+                    if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
+                        save_val_img(
+                            batch_idx=i,
+                            epoch_idx=epoch,
+                            prediction=vout[1], 
+                            ground_truth=Y[1], 
+                            gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                            pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                        )
+                    else:
+                        save_val_img(
+                            batch_idx=i,
+                            epoch_idx=epoch,
+                            prediction=vout[0], 
+                            ground_truth=Y[0], 
+                            gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                            pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                        )
+                    
+                    # test for filename first
+                    # print(f"Epoch {epoch}, Batch {i} contains {len(vin)} images")
+                    # print(vout.shape, vout.dtype)
+                    
                     vloss = self.loss_fn(vout, Y)
-                    # vloss = sigmoid_focal_loss(vout, Y, alpha=0.5, gamma=1, reduction='mean') + self.loss_fn(vout, Y)
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T
@@ -128,7 +170,7 @@ class MicronucleiModel():
                 # Get predictions
                 vin, vls = vdata
                 pred0 = F.softmax(self.model(vin.to(self.device)), dim=1)
-                P = torch.reshape(pred0, (-1, 32, 32))
+                P = torch.reshape(pred0, (-1, self.patch_size, self.patch_size))
                 pred = P.cpu().numpy()
 
                 # Collect predictions and ground truth
@@ -161,10 +203,10 @@ class MicronucleiModel():
         self.model.to(self.device)
         
         
-    def predict(self, image, stride=8, patch_size=256, step=16, batch_size=512):
+    def predict(self, image, stride=8, step=16, batch_size=512):
         probabilities = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
-        TOKENS_PER_PATCH = patch_size // stride
+        TOKENS_PER_PATCH = self.patch_size // stride
         ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
         batch, coords = [], []
 
@@ -185,11 +227,11 @@ class MicronucleiModel():
 
 
         with torch.no_grad():
-            for i in tqdm(range(0,image.shape[0]-patch_size+1, step)):
+            for i in tqdm(range(0,image.shape[0]-self.patch_size+1, step)):
                 a = i // stride
-                for j in range(0,image.shape[1]-patch_size+1, step):
+                for j in range(0,image.shape[1]-self.patch_size+1, step):
                     b = j // stride
-                    vin = mnds.patch_to_rgb(image[i:i+patch_size,j:j+patch_size])
+                    vin = mnds.patch_to_rgb(image[i:i+self.patch_size,j:j+self.patch_size])
                     batch.append(vin[None,:,:,:])
                     coords.append({"i":i, "j":j, "a":a, "b":b})
 
