@@ -172,13 +172,13 @@ class MicronucleiDataset(Dataset):
                 count += 1
 
             # Complete budget with non-annotated patches
-            U = [x for x in range(patches_per_image) if x not in A]
-            pointer = 0
-            while count < patches_per_image:
-                k = U[pointer]
-                self.index.append({"Image":imid, "coord": C[k,:].tolist(), "locs":[]})
-                pointer += 1
-                count += 1
+            # U = [x for x in range(patches_per_image) if x not in A]
+            # pointer = 0
+            # while count < patches_per_image:
+            #     k = U[pointer]
+            #     self.index.append({"Image":imid, "coord": C[k,:].tolist(), "locs":[]})
+            #     pointer += 1
+            #     count += 1
 
     def index_patches(self):
         self.index = []

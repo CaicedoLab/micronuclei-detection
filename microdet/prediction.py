@@ -77,8 +77,8 @@ annot_files.sort()
 # models_dir = "/model_output/dinov2_base_model/"
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment12/"
-models_dir = "/model_output/dinov2s_experiment12/" 
+predictions_dir = DIRECTORY + "/model_output/dinov2s_experiment13/"
+models_dir = "/model_output/dinov2s_experiment13/" 
 
 # In[4]:
 
