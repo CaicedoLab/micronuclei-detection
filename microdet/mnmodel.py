@@ -203,7 +203,7 @@ class MicronucleiModel():
         self.model.to(self.device)
         
         
-    def predict(self, image, stride=8, step=16, batch_size=512):
+    def predict(self, image, stride=1, step=16, batch_size=512):
         probabilities = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         TOKENS_PER_PATCH = self.patch_size // stride

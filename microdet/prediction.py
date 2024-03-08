@@ -87,13 +87,13 @@ if True:
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE)
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-    probabilities = model.predict(im, stride=STRIDE, step=STEP, batch_size=BATCH_SIZE)
+    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
     
     # Run evaluations
-    results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)
-    evaluation.display_detections(im, imid, results, predictions_dir)
+    #results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)
+    #evaluation.display_detections(im, imid, results, predictions_dir)
 
 
 # In[ ]:
