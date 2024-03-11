@@ -22,7 +22,7 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2'
-OUTPUT_DIR = "/model_output/pixel_decoder2/"
+OUTPUT_DIR = "/model_output/pixel_decoder6/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'

@@ -13,10 +13,55 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torchvision.ops import sigmoid_focal_loss
 
 import mnds
 import detection
 import vision_transformer as vit
+        
+        
+class DiceLoss(torch.nn.Module):
+    def __init__(self, smoothing=1e-5, reduction='mean'):
+        super(DiceLoss, self).__init__()
+        self.smoothing = smoothing
+        self.reduction = reduction
+
+    def forward(self, prediction, ground_truth):
+        # one hot encoding into 2 classes (channels)
+        # print('Before one hot encoding (only encode GT)')
+        # print(f'Pred Shape: {prediction.shape}')
+        # print(f'GT shape: {ground_truth.shape}')
+        # print(f'GT values: {ground_truth.unique()}')
+        
+        ground_truth = torch.nn.functional.one_hot(ground_truth.to(torch.int64), 2).transpose(1,4).squeeze(dim=-1)
+        
+        # print('After one hot encoding')
+        # print(f'Pred shape: {prediction.shape}')
+        # print(f'GT shape: {ground_truth.shape}')
+        
+        probs = torch.sigmoid(prediction)
+        ground_truth = ground_truth.long()
+        
+        num = probs * ground_truth # numerator
+        num = torch.sum(num, dim=(2,3))  # Sum over all pixels NxCxHxW --> NxC
+        
+        den1 = probs * probs # 1st denominator
+        den1 = torch.sum(den1, dim=(2,3))
+        
+        den2 = ground_truth * ground_truth # 2nd denominator
+        den2 = torch.sum(den2, dim=(2,3))
+        
+        dice_loss = 2. * (num + self.smoothing) / (den1 + den2 + self.smoothing)  # Apply smoothing for numerical stability
+        
+        if self.reduction == 'mean':
+            dice_loss = 1 - torch.mean(dice_loss)
+        elif self.reduction == 'sum':
+            dice_loss = 1 - torch.sum(dice_loss)
+        else:
+            raise ValueError("'Reduction method must be either 'mean' or 'sum'")
+        
+        return dice_loss
+
 
 class MicronucleiModel():
     
@@ -54,7 +99,8 @@ class MicronucleiModel():
         
         self.model = detection.DetectionModel(device=self.device)
         
-        self.loss_fn = torch.nn.BCEWithLogitsLoss()
+        # self.loss_fn = torch.nn.BCEWithLogitsLoss()
+        self.loss_fn = DiceLoss()
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer=self.optimizer,
@@ -72,9 +118,12 @@ class MicronucleiModel():
             self.optimizer.zero_grad()
             p = self.model(x.to(self.device))
 
-            # Loss function
-            Y = torch.reshape(y, (-1, self.patch_size, self.patch_size)).to(self.device).float()
+            # Loss function   
+            Y = y.to(self.device).float()
+            Y = Y.unsqueeze(dim=1)
+            
             loss = self.loss_fn(p, Y)
+            # loss = 0.05 * self.loss_fn(p, Y) + 0.95 * sigmoid_focal_loss(p, Y, alpha=0.25, gamma=1, reduction='mean')
             
             # Training instructions
             loss.backward()
@@ -88,6 +137,9 @@ class MicronucleiModel():
     
     def train(self, epochs, batch_size, learning_rate, output_dir):
         def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
+            prediction = prediction.squeeze(1)
+            ground_truth = ground_truth.squeeze(1)
+            
             if (batch_idx % 10 == 0) and (epoch_idx in [0, 10, 19]): 
                 # roughly 31 batches for validation files
                 torchvision.utils.save_image(prediction, pred_path)
@@ -117,11 +169,8 @@ class MicronucleiModel():
                     # roughly 31 batches, each batch has 4 images
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
-                    Y = torch.reshape(vls, (-1, self.patch_size, self.patch_size)).to(self.device).float()
-                    
-                    # here Y contains 4 image, we get the middle one
-                    # print(f'Prediction Shape: {vout.shape}')
-                    # print(f'Ground Truth Shape: {Y.shape}')
+                    Y = vls.to(self.device).float()
+                    Y = Y.unsqueeze(dim=1)
                     
                     # save validation image
                     filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
@@ -144,11 +193,8 @@ class MicronucleiModel():
                             pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
                         )
                     
-                    # test for filename first
-                    # print(f"Epoch {epoch}, Batch {i} contains {len(vin)} images")
-                    # print(vout.shape, vout.dtype)
-                    
                     vloss = self.loss_fn(vout, Y)
+                    # vloss = 0.05 * self.loss_fn(vout, Y) + 0.95 * sigmoid_focal_loss(vout, Y, alpha=0.25, gamma=1, reduction='mean')
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T
@@ -169,10 +215,11 @@ class MicronucleiModel():
             for i, vdata in enumerate(self.val_dataloader):
                 # Get predictions
                 vin, vls = vdata
-                pred0 = F.softmax(self.model(vin.to(self.device)), dim=1)
+                output = self.model(vin.to(self.device)) # get the micronuclei class
+                pred0 = F.softmax(output, dim=1)
                 P = torch.reshape(pred0, (-1, self.patch_size, self.patch_size))
                 pred = P.cpu().numpy()
-
+                
                 # Collect predictions and ground truth
                 PRED.append(pred)
                 GT.append(vls.cpu().numpy())
@@ -181,9 +228,13 @@ class MicronucleiModel():
         GT = np.concatenate(GT, axis=0).reshape((-1,))
         
         # Precision-recall curve
+        # display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
+        #     GT, PRED, name="Detector" #, plot_chance_level=True
+        # )
         display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-            GT, PRED, name="Detector" #, plot_chance_level=True
+            GT, PRED, name="Segmentor" #, plot_chance_level=True
         )
+        
         _ = display.ax_.set_title("Precision-Recall curve")
         
         # Classification report

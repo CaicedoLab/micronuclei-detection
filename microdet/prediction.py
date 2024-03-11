@@ -65,8 +65,8 @@ annot_files.sort()
 
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/pixel_decoder2/"
-models_dir = "/model_output/pixel_decoder2/" 
+predictions_dir = DIRECTORY + "/model_output/pixel_decoder1/"
+models_dir = "/model_output/pixel_decoder1/" 
 
 # In[4]:
 
