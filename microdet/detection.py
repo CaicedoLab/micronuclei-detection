@@ -52,7 +52,6 @@ class DetectionModel(torch.nn.Module):
         # classification layer
         self.classifier = torch.nn.Conv2d(in_channels=48, out_channels=1, kernel_size=(1,1))
         self.classifier.to(device)
-
                 
     def forward(self, x):
         with torch.no_grad():
@@ -67,7 +66,7 @@ class DetectionModel(torch.nn.Module):
         
         x = self.decoder(x)
         x = self.classifier(x)
-        x = x.squeeze(dim=1)
+        # x = x.squeeze(dim=1)
 
         #x = torch.reshape(x, (B, W*H)) # reshape to Batch size (32) * # of Tokens (1024)
         # x = torch.nn.functional.interpolate(x, (448, 448)) 
