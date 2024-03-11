@@ -59,12 +59,16 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
 
-
 def read_micronuclei_masks(directory, imid, scale_factor=1.0):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
     otl = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
     return mask
+
+def read_nuclei_masks(directory, imid, scale_factor=1.0):
+    otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
+    otl = otl > 0 # It's a labeled matrix, so make it binary
+    return otl
 
 # PATCH AUGMENTATIONS
 def detection_transforms(patch, target):
@@ -114,8 +118,9 @@ class MicronucleiDataset(Dataset):
             #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
             mni = read_micronuclei_annotations(directory, imid)
             mnm = read_micronuclei_masks(directory, imid)
+            nuc = read_nuclei_masks(directory, imid)
             all_locs.append(mni)
-            self.images[imid] = {"image":im, "mask":mnm, "loc":mni}
+            self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             #break
             
         self.all_locs = pd.concat(all_locs)
@@ -238,7 +243,8 @@ class MicronucleiDataset(Dataset):
         PS = self.patch_size
         r,c = int(item["coord"][0]), int(item["coord"][1])
         crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
-        mask = self.images[item["Image"]]["mask"][r:r+PS,c:c+PS]
+        #mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
+        mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
         crop = patch_to_rgb(crop, self.edges)
         
         # Move labels to a local reference frame
