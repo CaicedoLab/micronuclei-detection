@@ -9,6 +9,7 @@ import sys
 import time
 import torch
 import skimage
+import sklearn.metrics
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,7 +40,8 @@ BATCH_SIZE = 32
 EPOCHS = 20
 LR = 0.0001
 
-THRESHOLD = 0.25
+# THRESHOLD = 0.25
+THRESHOLD = 0.5
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
@@ -65,8 +67,8 @@ annot_files.sort()
 
 
 # expriment directory with dinov2 small
-predictions_dir = DIRECTORY + "/model_output/pixel_decoder1/"
-models_dir = "/model_output/pixel_decoder1/" 
+predictions_dir = DIRECTORY + "/model_output/nuclei_experiments/"
+models_dir = "/model_output/nuclei_experiments/" 
 
 # In[4]:
 
@@ -76,13 +78,13 @@ if True:
     # Select image for analysis
     validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
-    print(imid)
     
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
-    gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
+    # gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
+    gt = mnds.read_nuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
     
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE)
@@ -90,6 +92,21 @@ if True:
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
+    
+    # Calculate the jaccard score between probabilities and gt
+    print(f'probabilities value: {np.unique(probabilities)} \n')
+    # threshold probabilities into 1 and 0
+    probabilities = probabilities > THRESHOLD # 0.5
+    probabilities = probabilities.astype(np.float64)
+    
+    print(f'After threshold probabilities value: {np.unique(probabilities)} \n')
+    print(f'Probabilities shape: {probabilities.shape}')
+    print(f'GT shape: {gt.shape}')
+    
+    # Jaccard Score
+    jaccard_score = sklearn.metrics.jaccard_score(gt, probabilities, average='weighted')
+    print(imid)
+    print(f'Prediction Jaccard Score: {jaccard_score:.4f} \n')
     
     # Run evaluations
     #results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)

@@ -27,18 +27,7 @@ class DiceLoss(torch.nn.Module):
         self.reduction = reduction
 
     def forward(self, prediction, ground_truth):
-        # one hot encoding into 2 classes (channels)
-        # print('Before one hot encoding (only encode GT)')
-        # print(f'Pred Shape: {prediction.shape}')
-        # print(f'GT shape: {ground_truth.shape}')
-        # print(f'GT values: {ground_truth.unique()}')
-        
-        ground_truth = torch.nn.functional.one_hot(ground_truth.to(torch.int64), 2).transpose(1,4).squeeze(dim=-1)
-        
-        # print('After one hot encoding')
-        # print(f'Pred shape: {prediction.shape}')
-        # print(f'GT shape: {ground_truth.shape}')
-        
+        # Conclusion, do not use one-hot encoding
         probs = torch.sigmoid(prediction)
         ground_truth = ground_truth.long()
         
@@ -70,6 +59,7 @@ class MicronucleiModel():
         self.device = device
         self.validation_files = validation_files
         self.patch_size = patch_size
+        self.threshold = 0.0
         
         if len(training_files) > 0:
             self.training_set = mnds.MicronucleiDataset(
@@ -140,10 +130,13 @@ class MicronucleiModel():
             prediction = prediction.squeeze(1)
             ground_truth = ground_truth.squeeze(1)
             
-            if (batch_idx % 10 == 0) and (epoch_idx in [0, 10, 19]): 
-                # roughly 31 batches for validation files
-                torchvision.utils.save_image(prediction, pred_path)
-                torchvision.utils.save_image(ground_truth, gt_path)
+            # switch prediction to binary
+            prediction = prediction > self.threshold
+            prediction = prediction.float()
+            
+            if (batch_idx % 10 == 0) and (epoch_idx in [0, 10, 19]):     
+                torchvision.utils.save_image(prediction, pred_path) # modify, to numpy arr?
+                torchvision.utils.save_image(ground_truth, gt_path) # modify
         
         self.start_model(batch_size, learning_rate)
         
@@ -215,8 +208,11 @@ class MicronucleiModel():
             for i, vdata in enumerate(self.val_dataloader):
                 # Get predictions
                 vin, vls = vdata
-                output = self.model(vin.to(self.device)) # get the micronuclei class
-                pred0 = F.softmax(output, dim=1)
+                output = self.model(vin.to(self.device))
+                output = output > 0
+                pred0 = output.float()
+                # pred0 = F.softmax(output, dim=1)
+                
                 P = torch.reshape(pred0, (-1, self.patch_size, self.patch_size))
                 pred = P.cpu().numpy()
                 
@@ -227,19 +223,9 @@ class MicronucleiModel():
         PRED = np.concatenate(PRED, axis=0).reshape((-1,))
         GT = np.concatenate(GT, axis=0).reshape((-1,))
         
-        # Precision-recall curve
-        # display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-        #     GT, PRED, name="Detector" #, plot_chance_level=True
-        # )
-        display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-            GT, PRED, name="Segmentor" #, plot_chance_level=True
-        )
-        
-        _ = display.ax_.set_title("Precision-Recall curve")
-        
-        # Classification report
-        report = sklearn.metrics.classification_report(GT, PRED > 0.5)
-        print(report)
+        # Jaccard Score
+        jaccard_score = sklearn.metrics.jaccard_score(GT, PRED, average='weighted')
+        print(f'Jaccard Score: {jaccard_score:.4f} \n')
         
         
     def save(self, outdir="models/"):
@@ -265,7 +251,10 @@ class MicronucleiModel():
 
         def batch_predict(batch, coords):
             B = torch.cat(batch, axis=0)
-            pred0 = F.softmax(self.model(B.to(self.device)))
+            # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
+            output = self.model(B.to(self.device))
+            output = output > self.threshold
+            pred0 = output.float()
             P = torch.reshape(pred0, (-1, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
             P = P.cpu().numpy()
 
