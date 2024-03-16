@@ -10,6 +10,7 @@ import time
 import torch
 import skimage
 import sklearn.metrics
+import wandb
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -72,6 +73,23 @@ models_dir = "/model_output/nuclei_experiments/"
 
 # In[4]:
 
+# Initiate Weights and Biases
+wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+wandb.init(
+    project='micronuclei-segmentation-prediction',
+    
+    # hyperparameters
+    config={
+        "architecture":"base_model: 3 blocks of 2x2 transposed conv and 3x3 conv layers",
+        "learning_rate":LR,
+        "epochs": EPOCHS,
+        "feature_size":FEATURE_SIZE,
+        "batch_size":BATCH_SIZE,
+        "patch_size":PATCH_SIZE,
+        "fine_tuning":False,
+        "Scheduler":"Cos scheduler"
+    }
+)
 
 #for i in range(len(annot_files)):
 if True:
@@ -83,32 +101,31 @@ if True:
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
-    # gt = mnds.read_micronuclei_annotations(DIRECTORY, imid)
-    gt = mnds.read_nuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
+    mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
+    n_gt = mnds.read_nuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
     
     # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE)
+    model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE, edges=True)
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
     
     # Calculate the jaccard score between probabilities and gt
-    print(f'probabilities value: {np.unique(probabilities)} \n')
-    # threshold probabilities into 1 and 0
-    probabilities = probabilities > THRESHOLD # 0.5
-    probabilities = probabilities.astype(np.float64)
-    
-    print(f'After threshold probabilities value: {np.unique(probabilities)} \n')
-    print(f'Probabilities shape: {probabilities.shape}')
-    print(f'GT shape: {gt.shape}')
-    
-    # Jaccard Score
-    jaccard_score = sklearn.metrics.jaccard_score(gt, probabilities, average='weighted')
-    print(imid)
-    print(f'Prediction Jaccard Score: {jaccard_score:.4f} \n')
-    
+    # print(f'probabilities shape(expected (2,2960,2960)): {probabilities.shape} \n')
+
     # Run evaluations
+    mn_pred = probabilities[0,:,:] > THRESHOLD
+    n_pred = probabilities[1,:,:] > THRESHOLD
+    
+    print('If predicted probabilities are all zeroes will encounter errors')
+    print(np.unique(mn_pred))
+    
+    print(imid)
+    # computationally demanding, only report for micronuclei for efficiency purpose
+    # evaluation.segmentation_report(predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    # evaluation.segmentation_report(predictions=n_pred, gt=n_gt, intersection_ratio=0.5, report_obj='Nuclei')
+    
     #results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)
     #evaluation.display_detections(im, imid, results, predictions_dir)
 

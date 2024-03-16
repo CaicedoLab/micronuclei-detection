@@ -7,6 +7,7 @@
 import os
 import sys
 import torch
+import wandb
 import mnmodel
 
 # In[3]:
@@ -52,6 +53,23 @@ annot_files = annot_files[0:10]
 
 # In[5]:
 
+# Initiate Weights and Biases Configuration
+wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+wandb.init(
+    project='micronuclei-segmentation-training',
+    
+    # hyperparameters
+    config={
+        "architecture":"base_model: 3 blocks of 2x2 transposed conv and 3x3 conv layers",
+        "learning_rate":LR,
+        "epochs": EPOCHS,
+        "feature_size":FEATURE_SIZE,
+        "batch_size":BATCH_SIZE,
+        "patch_size":PATCH_SIZE,
+        "fine_tuning":False,
+        "Scheduler":"Cos scheduler"
+    }
+)
 
 #for i in range(len(annot_files)):
 if True:
@@ -70,7 +88,8 @@ if True:
         training_files=training_files, 
         validation_files=validation_files, 
         patch_size=PATCH_SIZE,
-        scale_factor=SCALE_FACTOR
+        scale_factor=SCALE_FACTOR,
+        edges=True
     )
     
     # Train
