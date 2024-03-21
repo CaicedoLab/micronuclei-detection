@@ -28,8 +28,10 @@ def trunc_vit_tiny(patch_size=16, **kwargs):
 
 class DetectionModel(torch.nn.Module):
     
-    def __init__(self, device, stride=8):
+    def __init__(self, device, stride=8, finetune=False):
         super(DetectionModel, self).__init__()
+        
+        self.finetune = finetune
         
         # pretrained backbone has patch size 14 x 14, split into 14 row and columns
         self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
@@ -54,17 +56,22 @@ class DetectionModel(torch.nn.Module):
         self.classifier.to(device)
                 
     def forward(self, x):
-        with torch.no_grad():
+        if self.finetune:
             x = torch.nn.functional.interpolate(x, (448,448))
             x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-        B,T,C = x.shape # Batch, Token size * Toekn size, Channel
-        W,H = 32,32
-
-
-        # x shape after backbone: (32, 384, H, W), input image format for CNN (batch, # of channels, height, width)
-        x = x.reshape(B,W,H,C).permute(0,3,1,2)
-        
-        x = self.decoder(x)
-        x = self.classifier(x)
+            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
+            W,H = 32,32
+            x = x.reshape(B,W,H,C).permute(0,3,1,2)
+            x = self.decoder(x)
+            x = self.classifier(x)
+        else:
+            with torch.no_grad():
+                x = torch.nn.functional.interpolate(x, (448,448))
+                x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
+            W,H = 32,32
+            x = x.reshape(B,W,H,C).permute(0,3,1,2)
+            x = self.decoder(x)
+            x = self.classifier(x)
         
         return x

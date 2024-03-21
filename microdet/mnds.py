@@ -220,8 +220,10 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                else:
-                    print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
+                
+                # comment ouf only for grid search purpose, remove commenting after grid search
+                # else:
+                #     print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
 
             # Put all patches in the index
             for k in range(C.shape[0]):

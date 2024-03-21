@@ -77,7 +77,6 @@ def compare_two_labels(label_model, label_gt, return_IoU_matrix, debug=False):
     return result
 
 def measures_at(threshold, IOU):
-    
     matches = IOU > threshold
     
     true_positives = np.sum(matches, axis=1) == 1   # Correct objects
@@ -95,26 +94,21 @@ def measures_at(threshold, IOU):
     prec = TP / (TP + FP)
 
     rec = TP / (TP + FN)
-    
+
     return f1, prec, rec, TP, FP, FN
 
 
-def segmentation_report(predictions, gt, intersection_ratio=0.1, report_obj='Micronuclei'):
-    start = time.time()
-    assert report_obj in ['Micronuclei', 'Nuclei'], f'Please input either Micronuclei or Nuclei for report_obj argument!'
-    assert np.unique(predictions)[0] != 0, f'All predicted class are 0, failed to evaluate!' # all predicted negative class
-        
+def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, report_obj='Micronuclei'):
+    # start = time.time()
     pi = skimage.morphology.label(predictions)
     gti = skimage.morphology.label(gt)
     nb_overdetection, nb_underdetection, mean_IoU, IoUs = compare_two_labels(pi, gti, True, False)
-    f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
-    
-    end = time.time() - start
-    wandb.log({"Precision":prec, "Recall":rec, "Time":end})
-    
-    print(f'----- Segmentation Report for {report_obj} -----')
-    print(f'Precision: {prec:.4f}, Recall: {rec:.4f} - Time: {end:.2f} secs')
-    wandb.finish()
+    if IoUs.size == 0:
+        print(f'{imid},0.0,0.0')
+    else:
+        f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
+        # print(f'----- Segmentation Report for {report_obj} -----')
+        print(f'{imid},{prec:.4f},{rec:.4f}')
 
 def get_assignment(C, gt):
     # Map token predictions to pixels (multiply by 8)

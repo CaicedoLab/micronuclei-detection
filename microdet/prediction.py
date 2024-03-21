@@ -41,8 +41,8 @@ BATCH_SIZE = 32
 EPOCHS = 20
 LR = 0.0001
 
-# THRESHOLD = 0.25
-THRESHOLD = 0.5
+THRESHOLD = 0.25
+# THRESHOLD = 0.5
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
@@ -74,22 +74,23 @@ models_dir = "/model_output/nuclei_experiments/"
 # In[4]:
 
 # Initiate Weights and Biases
-wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
-wandb.init(
-    project='micronuclei-segmentation-prediction',
+# wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+# wandb.init(
+#     project='micronuclei-segmentation-prediction',
     
-    # hyperparameters
-    config={
-        "architecture":"base_model: 3 blocks of 2x2 transposed conv and 3x3 conv layers",
-        "learning_rate":LR,
-        "epochs": EPOCHS,
-        "feature_size":FEATURE_SIZE,
-        "batch_size":BATCH_SIZE,
-        "patch_size":PATCH_SIZE,
-        "fine_tuning":False,
-        "Scheduler":"Cos scheduler"
-    }
-)
+#     # hyperparameters
+#     config={
+#         "architecture":"base_model: 3 blocks of 2x2 transposed conv and 3x3 conv layers",
+#         "learning_rate":LR,
+#         "threshold":THRESHOLD,
+#         "epochs": EPOCHS,
+#         "feature_size":FEATURE_SIZE,
+#         "batch_size":BATCH_SIZE,
+#         "patch_size":PATCH_SIZE,
+#         "fine_tuning":False,
+#         "Scheduler":"Cos scheduler"
+#     }
+# )
 
 #for i in range(len(annot_files)):
 if True:
@@ -118,17 +119,12 @@ if True:
     mn_pred = probabilities[0,:,:] > THRESHOLD
     n_pred = probabilities[1,:,:] > THRESHOLD
     
-    print('If predicted probabilities are all zeroes will encounter errors')
-    print(np.unique(mn_pred))
-    
-    print(imid)
     # computationally demanding, only report for micronuclei for efficiency purpose
-    # evaluation.segmentation_report(predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
     # evaluation.segmentation_report(predictions=n_pred, gt=n_gt, intersection_ratio=0.5, report_obj='Nuclei')
     
     #results = evaluation.prediction_report(imid, probabilities, gt, THRESHOLD, predictions_dir)
     #evaluation.display_detections(im, imid, results, predictions_dir)
-
 
 # In[ ]:
 
