@@ -245,13 +245,13 @@ class MicronucleiModel():
             # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
             # log metrics to wandb
-            # wandb.log({"training_loss":avg_loss, "validation_loss":avg_vloss})
+            wandb.log({"Training_loss":avg_loss, "Validation_loss":avg_vloss})
             
             epoch_number += 1
 
         C = time.time() - start
         # print(f"\nTrainined finished in {C:.2f} seconds") # comment out for grid search
-        # wandb.finish()
+        wandb.log({"Train time":C})
         
     def validate(self):
         self.model.eval()

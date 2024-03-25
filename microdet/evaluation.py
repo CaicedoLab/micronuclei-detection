@@ -104,11 +104,15 @@ def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, report_ob
     gti = skimage.morphology.label(gt)
     nb_overdetection, nb_underdetection, mean_IoU, IoUs = compare_two_labels(pi, gti, True, False)
     if IoUs.size == 0:
-        print(f'{imid},0.0,0.0')
+        prec = 0.0
+        rec = 0.0
+        print(f'{imid},{prec},{rec}')
+        wandb.log({'Precision':prec, 'Recall':rec})
     else:
         f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
         # print(f'----- Segmentation Report for {report_obj} -----')
         print(f'{imid},{prec:.4f},{rec:.4f}')
+        wandb.log({'Precision':prec, 'Recall':rec})
 
 def get_assignment(C, gt):
     # Map token predictions to pixels (multiply by 8)
