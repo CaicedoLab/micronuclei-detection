@@ -141,8 +141,8 @@ class MicronucleiModel():
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
         if loss_fn == 'dice':
             self.loss_fn = DiceLoss(alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean')
-        elif loss_fn == 'cross_entropy':
-            self.loss_fn = torch.nn.CrossEntropyLoss()
+        elif loss_fn == 'sigmoid_cross_entropy':
+            self.loss_fn = torch.nn.BCEWithLogitsLoss() # use sigmoid cross entropy, cross entropy is a worst choice
         elif loss_fn == 'focal':
             self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
             

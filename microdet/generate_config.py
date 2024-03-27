@@ -4,7 +4,7 @@
 
 import os
 
-loss = ['dice', 'cross_entropy', 'focal']
+loss = ['dice', 'sigmoid_cross_entropy', 'focal']
 LR = [0.1 / (10 ** i) for i in range(5)]
 batch_size = [8, 16, 32]
 train_mode = [True, False]
