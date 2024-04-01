@@ -61,9 +61,9 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
 
 def read_micronuclei_masks(directory, imid, scale_factor=1.0):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
-    otl = otl[:,:,0] > 0 # Use only the red channel
-    mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
-    return mask
+    edge = otl[:,:,0] > 0 # Use only the red channel
+    mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
+    return mask + edge
 
 def read_nuclei_masks(directory, imid, scale_factor=1.0):
     otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
