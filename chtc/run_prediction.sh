@@ -1,3 +1,4 @@
+#!/bin/bash
 tar -xvf microdet.tar.gz
 rm microdet.tar.gz
 cd microdet

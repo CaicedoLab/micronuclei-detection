@@ -121,7 +121,6 @@ class MicronucleiDataset(Dataset):
             nuc = read_nuclei_masks(directory, imid)
             all_locs.append(mni)
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
-            #break
             
         self.all_locs = pd.concat(all_locs)
         
@@ -221,8 +220,10 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                else:
-                    print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
+                
+                # comment ouf only for grid search purpose, remove commenting after grid search
+                # else:
+                #     print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
 
             # Put all patches in the index
             for k in range(C.shape[0]):
@@ -243,9 +244,12 @@ class MicronucleiDataset(Dataset):
         PS = self.patch_size
         r,c = int(item["coord"][0]), int(item["coord"][1])
         crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
-        #mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
-        mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
+        mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
+        n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
         crop = patch_to_rgb(crop, self.edges)
+        mask = torch.Tensor(np.concatenate(
+            (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
+        ))
         
         # Move labels to a local reference frame
         #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
@@ -258,9 +262,10 @@ class MicronucleiDataset(Dataset):
             #grid = patch_to_rgb(grid, edges=False)
             #crop, grid = self.transform(crop, grid)
             #grid = grid[0,:,:]
-            mask = patch_to_rgb(mask, edges=False)
+            
+            # mask = patch_to_rgb(mask, edges=False)
             crop, mask = self.transform(crop, mask)
-            mask = mask[0,:,:]
+            # mask = mask[0,:,:]
             
         return crop, mask
         

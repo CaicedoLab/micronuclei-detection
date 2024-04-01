@@ -4,6 +4,7 @@ import torch
 import skimage
 import sklearn.metrics
 import torchvision
+import wandb
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from torchvision.ops import sigmoid_focal_loss
+# from torchvision.ops import sigmoid_focal_loss
 
 import mnds
 import detection
@@ -21,23 +22,25 @@ import vision_transformer as vit
         
         
 class DiceLoss(torch.nn.Module):
-    def __init__(self, smoothing=1e-5, reduction='mean'):
+    def __init__(self, alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean'):
+        """_summary_
+
+        Args:
+            alpha (_type_): weight for micronuclei class, default=0.8
+            beta (_type_): weight for nuclei class, default=0.2
+            smoothing (_type_, optional): smoothing parameter for numerical stability. Defaults to 1e-5.
+            reduction (str, optional): Reduction method. Defaults to 'mean'.
+        """
         super(DiceLoss, self).__init__()
+        self.alpha = alpha
+        self.beta = beta
         self.smoothing = smoothing
         self.reduction = reduction
 
     def forward(self, prediction, ground_truth):
-        # one hot encoding into 2 classes (channels)
-        # print('Before one hot encoding (only encode GT)')
-        # print(f'Pred Shape: {prediction.shape}')
-        # print(f'GT shape: {ground_truth.shape}')
-        # print(f'GT values: {ground_truth.unique()}')
+        # Conclusion, do not use one-hot encoding
         
-        ground_truth = torch.nn.functional.one_hot(ground_truth.to(torch.int64), 2).transpose(1,4).squeeze(dim=-1)
-        
-        # print('After one hot encoding')
-        # print(f'Pred shape: {prediction.shape}')
-        # print(f'GT shape: {ground_truth.shape}')
+        assert prediction.shape == ground_truth.shape, f'Predictions shape does not match the ground truth!'
         
         probs = torch.sigmoid(prediction)
         ground_truth = ground_truth.long()
@@ -51,17 +54,52 @@ class DiceLoss(torch.nn.Module):
         den2 = ground_truth * ground_truth # 2nd denominator
         den2 = torch.sum(den2, dim=(2,3))
         
-        dice_loss = 2. * (num + self.smoothing) / (den1 + den2 + self.smoothing)  # Apply smoothing for numerical stability
+        # dice_loss = 2. * (num+ self.smoothing) / (den1 + den2 + self.smoothing)
+        dice_loss_mn = 2. * (num[:,0]+ self.smoothing) / (den1[:,0] + den2[:,0] + self.smoothing)
+        dice_loss_n = 2. * (num[:,1]+ self.smoothing) / (den1[:,1] + den2[:,1] + self.smoothing)
         
         if self.reduction == 'mean':
-            dice_loss = 1 - torch.mean(dice_loss)
+            dice_loss = 1 - (self.alpha * torch.mean(dice_loss_mn) + self.beta * torch.mean(dice_loss_n))
+            # dice_loss = 1 - torch.mean(dice_loss)
         elif self.reduction == 'sum':
-            dice_loss = 1 - torch.sum(dice_loss)
+            dice_loss = 1 - (self.alpha * torch.sum(dice_loss_mn) + self.beta * torch.sum(dice_loss_n))
+            # dice_loss = 1 - torch.sum(dice_loss)
         else:
             raise ValueError("'Reduction method must be either 'mean' or 'sum'")
         
         return dice_loss
+    
+class FocalLoss(torch.nn.Module):
+    """_summary_
+    Code are copied from torchvision.ops.sigmoid_focal_loss function
+    """
+    def __init__(self, alpha: float=0.25, gamma: float=2, reduction: str="mean"):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
 
+    def forward(self, inputs, targets):
+        p = torch.sigmoid(inputs)
+        ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
+        p_t = p * targets + (1 - p) * (1 - targets)
+        loss = ce_loss * ((1 - p_t) ** self.gamma)
+
+        if self.alpha >= 0:
+            alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+            loss = alpha_t * loss
+            
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        else:
+            raise ValueError(
+                f"Invalid Value for arg 'reduction': '{self.reduction} \n Supported reduction modes: 'mean', 'sum'"
+            )
+        return loss
+        
+        
 
 class MicronucleiModel():
     
@@ -70,6 +108,7 @@ class MicronucleiModel():
         self.device = device
         self.validation_files = validation_files
         self.patch_size = patch_size
+        self.threshold = 0.0
         
         if len(training_files) > 0:
             self.training_set = mnds.MicronucleiDataset(
@@ -92,20 +131,26 @@ class MicronucleiModel():
                 patch_size=patch_size
             )
         
-    def start_model(self, batch_size, learning_rate):
+    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False):
         # batch_size means number of images for each batch
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
-        self.model = detection.DetectionModel(device=self.device)
+        self.model = detection.DetectionModel(device=self.device, finetune=finetune)
         
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
-        self.loss_fn = DiceLoss()
+        if loss_fn == 'dice':
+            self.loss_fn = DiceLoss(alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean')
+        elif loss_fn == 'sigmoid_cross_entropy':
+            self.loss_fn = torch.nn.BCEWithLogitsLoss() # use sigmoid cross entropy, cross entropy is a worst choice
+        elif loss_fn == 'focal':
+            self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
+            
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer=self.optimizer,
-            T_max=4
-        )
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR( # turns LR into 2 in some epochs, ignore for now
+        #     optimizer=self.optimizer,
+        #     T_max=3
+        # )
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -120,10 +165,10 @@ class MicronucleiModel():
 
             # Loss function   
             Y = y.to(self.device).float()
-            Y = Y.unsqueeze(dim=1)
+            # Y = Y.unsqueeze(dim=1)
             
             loss = self.loss_fn(p, Y)
-            # loss = 0.05 * self.loss_fn(p, Y) + 0.95 * sigmoid_focal_loss(p, Y, alpha=0.25, gamma=1, reduction='mean')
+            # loss = 0.5 * self.loss_fn(p, Y) + 0.5 * sigmoid_focal_loss(p, Y, alpha=0.25, gamma=1, reduction='mean')
             
             # Training instructions
             loss.backward()
@@ -135,17 +180,16 @@ class MicronucleiModel():
         return running_loss / i
     
     
-    def train(self, epochs, batch_size, learning_rate, output_dir):
+    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False):
         def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
-            prediction = prediction.squeeze(1)
-            ground_truth = ground_truth.squeeze(1)
+            prediction = prediction > self.threshold
+            prediction = prediction.float()
             
-            if (batch_idx % 10 == 0) and (epoch_idx in [0, 10, 19]): 
-                # roughly 31 batches for validation files
-                torchvision.utils.save_image(prediction, pred_path)
+            if (batch_idx % 10 == 0) and (epoch_idx==19):     
+                torchvision.utils.save_image(prediction, pred_path) 
                 torchvision.utils.save_image(ground_truth, gt_path)
         
-        self.start_model(batch_size, learning_rate)
+        self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune)
         
         best_vloss = 1_000_000.
         epoch_number = 0
@@ -153,7 +197,7 @@ class MicronucleiModel():
         start = time.time()
         for epoch in range(epochs):
             # Training
-            print(f'EPOCH {epoch} - ', end='')
+            # print(f'EPOCH {epoch} - ', end='') # comment only for grid search purpose
             T = time.time()
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, None)
@@ -170,76 +214,97 @@ class MicronucleiModel():
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
                     Y = vls.to(self.device).float()
-                    Y = Y.unsqueeze(dim=1)
+                    # Y = Y.unsqueeze(dim=1)
                     
                     # save validation image
-                    filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
-                    if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
-                        save_val_img(
-                            batch_idx=i,
-                            epoch_idx=epoch,
-                            prediction=vout[1], 
-                            ground_truth=Y[1], 
-                            gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                            pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                        )
-                    else:
-                        save_val_img(
-                            batch_idx=i,
-                            epoch_idx=epoch,
-                            prediction=vout[0], 
-                            ground_truth=Y[0], 
-                            gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                            pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                        )
+                    # filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
+                    # if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
+                    #     save_val_img(
+                    #         batch_idx=i,
+                    #         epoch_idx=epoch,
+                    #         prediction=vout[1], 
+                    #         ground_truth=Y[1], 
+                    #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                    #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                    #     )
+                    # else:
+                    #     save_val_img(
+                    #         batch_idx=i,
+                    #         epoch_idx=epoch,
+                    #         prediction=vout[0], 
+                    #         ground_truth=Y[0], 
+                    #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                    #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                    #     )
                     
                     vloss = self.loss_fn(vout, Y)
-                    # vloss = 0.05 * self.loss_fn(vout, Y) + 0.95 * sigmoid_focal_loss(vout, Y, alpha=0.25, gamma=1, reduction='mean')
+                    # vloss = 0.5 * self.loss_fn(vout, Y) + 0.5 * sigmoid_focal_loss(vout, Y, alpha=0.25, gamma=1, reduction='mean')
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T
-            print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs')
+            # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
+            # log metrics to wandb
+            wandb.log({"Training_loss":avg_loss, "Validation_loss":avg_vloss})
+            
             epoch_number += 1
 
         C = time.time() - start
-        print(f"\nTrainined finished in {C:.2f} seconds")
+        # print(f"\nTrainined finished in {C:.2f} seconds") # comment out for grid search
+        wandb.log({"Train time":C})
         
     def validate(self):
         self.model.eval()
 
-        GT = []
-        PRED = []
+        mn_GT = []
+        mn_PRED = []
+        n_GT = []
+        n_PRED = []
 
+        ### make seperate report for micronuclei and nuclei, N*C*H*W, C = 0 is micronuclei, 1 is nuclei ###
+        
         with torch.no_grad():
             for i, vdata in enumerate(self.val_dataloader):
                 # Get predictions
                 vin, vls = vdata
-                output = self.model(vin.to(self.device)) # get the micronuclei class
-                pred0 = F.softmax(output, dim=1)
-                P = torch.reshape(pred0, (-1, self.patch_size, self.patch_size))
-                pred = P.cpu().numpy()
+                output = self.model(vin.to(self.device))
+                mn_output = output[:,0,:,:] > self.threshold # micronuclei
+                mn_pred0 = mn_output.float()
+                n_output = output[:,1,:,:] > self.threshold
+                n_pred0 = n_output.float()
+                # pred0 = F.softmax(output, dim=1)
                 
+                mn_P = torch.reshape(mn_pred0, (-1, self.patch_size, self.patch_size))
+                mn_pred = mn_P.cpu().numpy()
+                n_P = torch.reshape(n_pred0, (-1, self.patch_size, self.patch_size))
+                n_pred = n_P.cpu().numpy()
+             
                 # Collect predictions and ground truth
-                PRED.append(pred)
-                GT.append(vls.cpu().numpy())
-
-        PRED = np.concatenate(PRED, axis=0).reshape((-1,))
-        GT = np.concatenate(GT, axis=0).reshape((-1,))
+                # Micronuclei
+                mn_PRED.append(mn_pred)
+                mn_GT.append(vls[:,0,:,:].cpu().numpy())
+                # Nuclei
+                n_PRED.append(n_pred)
+                n_GT.append(vls[:,1,:,:].cpu().numpy())
         
-        # Precision-recall curve
-        # display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-        #     GT, PRED, name="Detector" #, plot_chance_level=True
-        # )
-        display = sklearn.metrics.PrecisionRecallDisplay.from_predictions(
-            GT, PRED, name="Segmentor" #, plot_chance_level=True
-        )
+        mn_PRED = np.concatenate(mn_PRED, axis=0).reshape((-1,))
+        mn_GT = np.concatenate(mn_GT, axis=0).reshape((-1,))
+        n_PRED = np.concatenate(n_PRED, axis=0).reshape((-1,))
+        n_GT = np.concatenate(n_GT, axis=0).reshape((-1,))
         
-        _ = display.ax_.set_title("Precision-Recall curve")
+        mn_report = sklearn.metrics.classification_report(mn_GT, mn_PRED)
+        print('----- Micronuclei Classification Report ------')
+        print(mn_report)
         
-        # Classification report
-        report = sklearn.metrics.classification_report(GT, PRED > 0.5)
-        print(report)
+        n_report = sklearn.metrics.classification_report(n_GT, n_PRED)
+        print('----- Nuclei Classification Report ------')
+        print(n_report)
+        
+        mn_jaccard_score = sklearn.metrics.jaccard_score(mn_GT, mn_PRED, average='weighted')
+        print(f'Micronuclei Jaccard Score: {mn_jaccard_score:.4f} \n')
+        
+        n_jaccard_score = sklearn.metrics.jaccard_score(n_GT, n_PRED, average='weighted')
+        print(f'Nuclei Jaccard Score: {n_jaccard_score:.4f} \n')
         
         
     def save(self, outdir="models/"):
@@ -255,7 +320,8 @@ class MicronucleiModel():
         
         
     def predict(self, image, stride=1, step=16, batch_size=512):
-        probabilities = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
+        classes = self.model.classifier.out_channels
+        probabilities = np.zeros((classes, image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         TOKENS_PER_PATCH = self.patch_size // stride
         ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
@@ -265,14 +331,17 @@ class MicronucleiModel():
 
         def batch_predict(batch, coords):
             B = torch.cat(batch, axis=0)
-            pred0 = F.softmax(self.model(B.to(self.device)))
-            P = torch.reshape(pred0, (-1, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
+            # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
+            output = self.model(B.to(self.device))
+            output = output > self.threshold
+            pred0 = output.float()
+            P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
             P = P.cpu().numpy()
 
             for c in range(len(coords)):
                 y = coords[c]["a"]
                 x = coords[c]["b"]
-                probabilities[y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += P[c]
+                probabilities[:,y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += P[c]
                 counts[y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += ones
             coords = []
 

@@ -19,7 +19,7 @@ RUN apt-get install -y python3
 RUN apt-get install -y python3-pip
 
 RUN pip3 install --upgrade pip
-RUN pip3 install pandas numpy matplotlib scikit-image Pillow scipy scikit-learn tqdm
+RUN pip3 install pandas numpy matplotlib scikit-image Pillow scipy scikit-learn tqdm wandb
 RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 RUN pip3 install timm
 

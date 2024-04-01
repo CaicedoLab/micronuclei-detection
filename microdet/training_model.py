@@ -7,6 +7,7 @@
 import os
 import sys
 import torch
+import wandb
 import mnmodel
 
 # In[3]:
@@ -22,7 +23,7 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 # Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2'
-OUTPUT_DIR = "/model_output/pixel_decoder6/"
+OUTPUT_DIR = "/model_output/nuclei_experiments/"
 
 # set CHTC writeable cahce directory
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
@@ -52,6 +53,24 @@ annot_files = annot_files[0:10]
 
 # In[5]:
 
+# Initiate Weights and Biases Configuration
+# wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+# wandb.init(
+#     project='micronuclei-segmentation-training',
+    
+#     # hyperparameters
+#     config={
+#         "architecture":"3 blocks, 1 2x2 upscale, 2 3x3 conv layers",
+#         "learning_rate":LR,
+#         "epochs": EPOCHS,
+#         "feature_size":FEATURE_SIZE,
+#         "batch_size":BATCH_SIZE,
+#         "patch_size":PATCH_SIZE,
+#         "fine_tuning":False,
+#         "Scheduler":"Cos scheduler",
+#         "Loss": "Weighted Dice Loss"
+#     }
+# )
 
 #for i in range(len(annot_files)):
 if True:
@@ -70,11 +89,12 @@ if True:
         training_files=training_files, 
         validation_files=validation_files, 
         patch_size=PATCH_SIZE,
-        scale_factor=SCALE_FACTOR
+        scale_factor=SCALE_FACTOR,
+        edges=True
     )
     
     # Train
-    model.train(EPOCHS, BATCH_SIZE, LR, output_dir=OUTPUT_DIR)
+    model.train(EPOCHS, BATCH_SIZE, LR, loss_fn='dice', output_dir=OUTPUT_DIR, finetune=False)
     
     # Validate
     model.validate()
@@ -83,6 +103,4 @@ if True:
     model.save(outdir=OUTPUT_DIR)
 
 
-
-
-
+# wandb.finish()

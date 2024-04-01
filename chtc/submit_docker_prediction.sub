@@ -1,7 +1,7 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.2
+docker_image = yasuo0810/dinov2_chtc:v0.3
 
 # set the executable to run
 executable = ./run_prediction.sh
@@ -16,13 +16,13 @@ transfer_output_files = microdet/dataset_v2/model_output, microdet/prediction_ou
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 
-request_cpus = 1
+request_cpus = 8
 request_gpus = 1
 
 +WantGPULab = true
 +GPUJobLength = "medium"
 
-request_memory = 80GB
+request_memory = 40GB
 request_disk = 80GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")

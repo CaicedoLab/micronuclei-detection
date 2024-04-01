@@ -1,0 +1,30 @@
+# Submit file
+universe = docker
+# link to self-built docker image
+docker_image = yasuo0810/dinov2_chtc:v0.3
+
+# set the executable to run
+executable = ./grid_search.sh
+arguments = -i $(ProcID) -l $(loss_fn) -r $(learning_rate) -b $(batch_size) -f $(finetune)
+log = log/log$(ProcID).log
+error = error/job$(ProcID).err
+output = output/job$(ProcID).out
+
+transfer_input_files = microdet.tar.gz
+transfer_output_files = microdet/config_output
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+request_cpus = 8
+request_gpus = 1
+
++WantGPULab = true
++GPUJobLength = "medium"
+
+request_memory = 40GB
+request_disk = 60GB
+
+Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
+
+queue loss_fn,learning_rate,batch_size,finetune from configuration.txt
