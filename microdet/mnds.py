@@ -39,6 +39,7 @@ def read_image(directory, imid, suffix, scale=1.0):
 def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
     img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
+    
     # Transform annotations to labels
     otl = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
@@ -66,7 +67,8 @@ def read_micronuclei_masks(directory, imid, scale_factor=1.0):
     return mask + edge
 
 def read_nuclei_masks(directory, imid, scale_factor=1.0):
-    otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
+    # otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
+    otl = read_image(directory, imid, 'nuclei-clean.tif', scale=scale_factor)
     otl = otl > 0 # It's a labeled matrix, so make it binary
     return otl
 
@@ -251,13 +253,15 @@ class MicronucleiDataset(Dataset):
             (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
         ))
         
-        # Move labels to a local reference frame
-        #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
-        #grid = np.zeros((32,32))
-        #for c in labels:
-        #    grid[c[0],c[1]] = 1.0
-        
-        # Apply augmentations
+        if len(np.unique(mn_mask)) == 1: # if the sliced region of mask has no annotation
+            return None
+            # Move labels to a local reference frame
+            #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
+            #grid = np.zeros((32,32))
+            #for c in labels:
+            #    grid[c[0],c[1]] = 1.0
+            
+            # Apply augmentations
         if self.mode == "random" and self.transform is not None:
             #grid = patch_to_rgb(grid, edges=False)
             #crop, grid = self.transform(crop, grid)
@@ -268,5 +272,5 @@ class MicronucleiDataset(Dataset):
             # mask = mask[0,:,:]
             
         return crop, mask
-        
+            
         

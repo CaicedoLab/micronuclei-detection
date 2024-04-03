@@ -73,7 +73,7 @@ class FocalLoss(torch.nn.Module):
     """_summary_
     Code are copied from torchvision.ops.sigmoid_focal_loss function
     """
-    def __init__(self, alpha: float=0.25, gamma: float=2, reduction: str="mean"):
+    def __init__(self, alpha=0.25, gamma=2, reduction: str="mean"):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
@@ -98,6 +98,20 @@ class FocalLoss(torch.nn.Module):
                 f"Invalid Value for arg 'reduction': '{self.reduction} \n Supported reduction modes: 'mean', 'sum'"
             )
         return loss
+    
+class CombinedFocalDiceLoss(torch.nn.Module):
+    def __init__(self, focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5):
+        super(CombinedFocalDiceLoss, self).__init__()
+        self.focal_loss = FocalLoss(alpha=alpha, gamma=gamma, reduction=reduction)
+        self.dice_loss = DiceLoss(alpha=dice_alpha, beta=dice_beta, smoothing=smoothing, reduction=reduction)
+        self.weight_focal = focal_weight
+        self.weight_dice = dice_weight
+
+    def forward(self, inputs, targets):
+        loss_focal = self.focal_loss(inputs, targets)
+        loss_dice = self.dice_loss(inputs, targets)
+        combined_loss = self.weight_focal * loss_focal + self.weight_dice * loss_dice
+        return combined_loss
         
         
 
@@ -141,24 +155,30 @@ class MicronucleiModel():
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
         if loss_fn == 'dice':
             self.loss_fn = DiceLoss(alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean')
-        elif loss_fn == 'sigmoid_cross_entropy':
-            self.loss_fn = torch.nn.BCEWithLogitsLoss() # use sigmoid cross entropy, cross entropy is a worst choice
         elif loss_fn == 'focal':
             self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
+        elif loss_fn == 'combined':
+            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=1, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate) #, momentum=0.9)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-6) #, momentum=0.9) # add weight decy / regularization
+        
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR( # turns LR into 2 in some epochs, ignore for now
         #     optimizer=self.optimizer,
         #     T_max=3
         # )
         
         
-    def train_one_epoch(self, epoch_index, tb_writer):
+    def train_one_epoch(self, epoch_index, tb_writer, l1=1e-6):
         running_loss = 0.
+        running_mn_loss = 0.
+        running_n_loss = 0.
         last_loss = 0.
 
         self.train_dataloader.dataset.randomize_patch_index()
         for i, data in enumerate(self.train_dataloader):
+            if data is None:
+                continue # skip the empty crop
+            
             x, y = data
             self.optimizer.zero_grad()
             p = self.model(x.to(self.device))
@@ -167,8 +187,10 @@ class MicronucleiModel():
             Y = y.to(self.device).float()
             # Y = Y.unsqueeze(dim=1)
             
-            loss = self.loss_fn(p, Y)
-            # loss = 0.5 * self.loss_fn(p, Y) + 0.5 * sigmoid_focal_loss(p, Y, alpha=0.25, gamma=1, reduction='mean')
+            mn_loss = self.loss_fn(p[:,0,:,:], Y[:,0,:,:])
+            n_loss = self.loss_fn(p[:,1,:,:], Y[:,1,:,:])
+            loss = mn_loss + n_loss
+            # loss = self.loss_fn(p, Y)
             
             # Training instructions
             loss.backward()
@@ -177,10 +199,15 @@ class MicronucleiModel():
 
             # Report results
             running_loss += loss.item()
-        return running_loss / i
+            running_mn_loss += mn_loss.item()
+            running_n_loss += n_loss.item()
+        avg_loss = running_loss / i
+        avg_mn_loss = running_mn_loss / i
+        avg_n_loss = running_n_loss / i
+        return avg_mn_loss, avg_n_loss, avg_loss
     
     
-    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False):
+    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False, l1=1e-6):
         def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
             prediction = prediction > self.threshold
             prediction = prediction.float()
@@ -200,7 +227,7 @@ class MicronucleiModel():
             # print(f'EPOCH {epoch} - ', end='') # comment only for grid search purpose
             T = time.time()
             self.model.train(True)
-            avg_loss = self.train_one_epoch(epoch_number, None)
+            avg_mn_loss, avg_n_loss, avg_loss = self.train_one_epoch(epoch_number, None, l1=l1) # still combined mn and nuclei losses
             
             # Update Learning Rate
             # self.scheduler.step()
@@ -211,6 +238,9 @@ class MicronucleiModel():
             with torch.no_grad():
                 for i, vdata in enumerate(self.val_dataloader):
                     # roughly 31 batches, each batch has 4 images
+                    if vdata is None:
+                        continue # skip empty mask
+                    
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
                     Y = vls.to(self.device).float()
@@ -237,15 +267,15 @@ class MicronucleiModel():
                     #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
                     #     )
                     
+                    
                     vloss = self.loss_fn(vout, Y)
-                    # vloss = 0.5 * self.loss_fn(vout, Y) + 0.5 * sigmoid_focal_loss(vout, Y, alpha=0.25, gamma=1, reduction='mean')
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
             C = time.time() - T
             # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
             # log metrics to wandb
-            wandb.log({"Training_loss":avg_loss, "Validation_loss":avg_vloss})
+            wandb.log({"Train_MN_loss":avg_mn_loss, "Train_N_loss":avg_n_loss,"Validation_loss":avg_vloss})
             
             epoch_number += 1
 

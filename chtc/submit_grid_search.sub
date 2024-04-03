@@ -22,7 +22,7 @@ request_gpus = 1
 +WantGPULab = true
 +GPUJobLength = "medium"
 
-request_memory = 40GB
+request_memory = 50GB
 request_disk = 60GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")

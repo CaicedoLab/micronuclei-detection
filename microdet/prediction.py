@@ -45,7 +45,7 @@ THRESHOLD = 0.25
 # THRESHOLD = 0.5
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
-os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 if len(sys.argv) < 3:

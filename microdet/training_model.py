@@ -26,7 +26,7 @@ DIRECTORY = CURRENT_PATH + '/dataset_v2'
 OUTPUT_DIR = "/model_output/nuclei_experiments/"
 
 # set CHTC writeable cahce directory
-os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 
 EPOCHS = 20
 BATCH_SIZE = 32
@@ -94,7 +94,7 @@ if True:
     )
     
     # Train
-    model.train(EPOCHS, BATCH_SIZE, LR, loss_fn='dice', output_dir=OUTPUT_DIR, finetune=False)
+    model.train(EPOCHS, BATCH_SIZE, LR, loss_fn='dice', output_dir=OUTPUT_DIR, finetune=True, l1=1e-6)
     
     # Validate
     model.validate()

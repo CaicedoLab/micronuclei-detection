@@ -4,10 +4,12 @@
 
 import os
 
-loss = ['dice', 'focal', 'sigmoid_cross_entropy']
-LR = [0.1 / (10 ** i) for i in range(5)]
+loss = ['dice', 'focal', 'combined']
+# LR = [0.1 / (10 ** i) for i in range(5)]
+LR = [1e-3, 1e-4, 1e-5]
 batch_size = [8, 16, 32]
-train_mode = [True, False]
+train_mode = [True]
+# train_mode = [True, False]
 
 with open('configuration.txt', 'w') as f:
     for i in loss:

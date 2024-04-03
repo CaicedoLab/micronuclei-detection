@@ -29,7 +29,7 @@ DIRECTORY = CURRENT_PATH + '/dataset_v2'
 OUTPUT_DIR = "/model_output/nuclei_experiments/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
-os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cahce/torch'
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 
@@ -63,7 +63,7 @@ del training_files[i]
 image_id = validation_files[0].split('.')[0].split('_')[-1]
 wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
 wandb.init(
-    project='grid_search',
+    project='grid_search_finetune',
     config={
         "architecture":"3 blocks of one 2x2 upscale and one 3x3 conv layers",
         "Loss": LOSS_FN,
@@ -72,7 +72,8 @@ wandb.init(
         "learning_rate":LR,
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
-        "patch_size":PATCH_SIZE
+        "patch_size":PATCH_SIZE,
+        "weight_decay":1e-6
     },
     name=f'experiment{experiment_id}-{image_id}'
 )
@@ -95,7 +96,8 @@ model.train(epochs=EPOCHS,
             learning_rate=LR, 
             loss_fn=LOSS_FN, 
             output_dir=OUTPUT_DIR, 
-            finetune=FINETUNE)
+            finetune=FINETUNE,
+            l1=1e-6)
 
 # Save
 model.save(outdir=OUTPUT_DIR)
@@ -110,7 +112,8 @@ validation_file = annot_files[i]
 imid = validation_file.split('.')[0]
 
 # Load image and annotations
-im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
+# im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
+im = mnds.read_image(DIRECTORY, imid, 'extra-edge.tif', scale=SCALE_FACTOR)
 im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
 mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
 
