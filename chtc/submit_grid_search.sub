@@ -1,7 +1,7 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.3
+docker_image = yasuo0810/dinov2_chtc:v0.5
 
 # set the executable to run
 executable = ./grid_search.sh
@@ -17,13 +17,13 @@ should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 
 request_cpus = 8
-request_gpus = 1
+request_gpus = 1 
 
 +WantGPULab = true
 +GPUJobLength = "medium"
 
-request_memory = 50GB
-request_disk = 60GB
+request_memory = 60GB
+request_disk = 40GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
 

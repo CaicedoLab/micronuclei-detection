@@ -43,16 +43,16 @@ class DetectionModel(torch.nn.Module):
             
             torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2),
             torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.ReLU(),
-            
-            torch.nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=(2,2), stride=2),
-            torch.nn.Conv2d(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1)), 
             torch.nn.ReLU()
+            
+            # torch.nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=(2,2), stride=2),
+            # torch.nn.Conv2d(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1)), 
+            # torch.nn.ReLU()
         )
         self.decoder.to(device)
 
         # classification layer
-        self.classifier = torch.nn.Conv2d(in_channels=48, out_channels=2, kernel_size=(1,1))
+        self.classifier = torch.nn.Conv2d(in_channels=96, out_channels=2, kernel_size=(1,1))
         self.classifier.to(device)
                 
     def forward(self, x):

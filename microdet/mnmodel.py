@@ -73,7 +73,7 @@ class FocalLoss(torch.nn.Module):
     """_summary_
     Code are copied from torchvision.ops.sigmoid_focal_loss function
     """
-    def __init__(self, alpha=0.25, gamma=2, reduction: str="mean"):
+    def __init__(self, alpha=0.25, gamma=2.0, reduction: str="mean"):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
@@ -100,17 +100,17 @@ class FocalLoss(torch.nn.Module):
         return loss
     
 class CombinedFocalDiceLoss(torch.nn.Module):
-    def __init__(self, focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5):
+    def __init__(self, focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2.0, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5):
         super(CombinedFocalDiceLoss, self).__init__()
         self.focal_loss = FocalLoss(alpha=alpha, gamma=gamma, reduction=reduction)
         self.dice_loss = DiceLoss(alpha=dice_alpha, beta=dice_beta, smoothing=smoothing, reduction=reduction)
-        self.weight_focal = focal_weight
-        self.weight_dice = dice_weight
+        self.focal_weight = focal_weight
+        self.dice_weight = dice_weight
 
     def forward(self, inputs, targets):
         loss_focal = self.focal_loss(inputs, targets)
         loss_dice = self.dice_loss(inputs, targets)
-        combined_loss = self.weight_focal * loss_focal + self.weight_dice * loss_dice
+        combined_loss = self.focal_weight * loss_focal + self.dice_weight * loss_dice
         return combined_loss
         
         
@@ -145,7 +145,7 @@ class MicronucleiModel():
                 patch_size=patch_size
             )
         
-    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False):
+    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
         # batch_size means number of images for each batch
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
@@ -160,37 +160,36 @@ class MicronucleiModel():
         elif loss_fn == 'combined':
             self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=1, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=1e-6) #, momentum=0.9) # add weight decy / regularization
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9) # add weight decy / regularization
         
-        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR( # turns LR into 2 in some epochs, ignore for now
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         #     optimizer=self.optimizer,
-        #     T_max=3
+        #     T_max=2,
+        #     eta_min=learning_rate * 0.1
         # )
         
         
-    def train_one_epoch(self, epoch_index, tb_writer, l1=1e-6):
+    def train_one_epoch(self, epoch_index, tb_writer):
         running_loss = 0.
-        running_mn_loss = 0.
-        running_n_loss = 0.
         last_loss = 0.
 
         self.train_dataloader.dataset.randomize_patch_index()
         for i, data in enumerate(self.train_dataloader):
-            if data is None:
-                continue # skip the empty crop
-            
             x, y = data
+            
             self.optimizer.zero_grad()
             p = self.model(x.to(self.device))
 
+            # output resolution: 128
+            p = torch.nn.functional.interpolate(p, (256,256))
+            
             # Loss function   
             Y = y.to(self.device).float()
             # Y = Y.unsqueeze(dim=1)
             
-            mn_loss = self.loss_fn(p[:,0,:,:], Y[:,0,:,:])
-            n_loss = self.loss_fn(p[:,1,:,:], Y[:,1,:,:])
-            loss = mn_loss + n_loss
-            # loss = self.loss_fn(p, Y)
+            # decoder_params = torch.cat([x.view(-1) for x in self.model.decoder.parameters()])
+            # l2_regularization = l2_penalty * torch.norm(decoder_params, 2)
+            loss = self.loss_fn(p, Y)
             
             # Training instructions
             loss.backward()
@@ -199,15 +198,10 @@ class MicronucleiModel():
 
             # Report results
             running_loss += loss.item()
-            running_mn_loss += mn_loss.item()
-            running_n_loss += n_loss.item()
-        avg_loss = running_loss / i
-        avg_mn_loss = running_mn_loss / i
-        avg_n_loss = running_n_loss / i
-        return avg_mn_loss, avg_n_loss, avg_loss
+        return running_loss / i
     
     
-    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False, l1=1e-6):
+    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False, weight_decay=1e-6):
         def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
             prediction = prediction > self.threshold
             prediction = prediction.float()
@@ -216,7 +210,7 @@ class MicronucleiModel():
                 torchvision.utils.save_image(prediction, pred_path) 
                 torchvision.utils.save_image(ground_truth, gt_path)
         
-        self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune)
+        self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune, weight_decay=weight_decay)
         
         best_vloss = 1_000_000.
         epoch_number = 0
@@ -227,22 +221,22 @@ class MicronucleiModel():
             # print(f'EPOCH {epoch} - ', end='') # comment only for grid search purpose
             T = time.time()
             self.model.train(True)
-            avg_mn_loss, avg_n_loss, avg_loss = self.train_one_epoch(epoch_number, None, l1=l1) # still combined mn and nuclei losses
+            avg_loss = self.train_one_epoch(epoch_number, None)
             
             # Update Learning Rate
             # self.scheduler.step()
+            # current_lr = self.optimizer.param_groups[0]['lr']
+            # wandb.log({"Scheduler LR":current_lr})
 
             # Validation
             running_vloss = 0.0
             self.model.eval()
             with torch.no_grad():
                 for i, vdata in enumerate(self.val_dataloader):
-                    # roughly 31 batches, each batch has 4 images
-                    if vdata is None:
-                        continue # skip empty mask
-                    
                     vin, vls = vdata
                     vout = self.model(vin.to(self.device))
+                    # output resolution: 128
+                    vout = torch.nn.functional.interpolate(vout, (256,256))
                     Y = vls.to(self.device).float()
                     # Y = Y.unsqueeze(dim=1)
                     
@@ -266,8 +260,7 @@ class MicronucleiModel():
                     #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
                     #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
                     #     )
-                    
-                    
+
                     vloss = self.loss_fn(vout, Y)
                     running_vloss += vloss
             avg_vloss = running_vloss / (i+1)
@@ -275,7 +268,7 @@ class MicronucleiModel():
             # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
             # log metrics to wandb
-            wandb.log({"Train_MN_loss":avg_mn_loss, "Train_N_loss":avg_n_loss,"Validation_loss":avg_vloss})
+            wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
             
             epoch_number += 1
 
@@ -298,6 +291,9 @@ class MicronucleiModel():
                 # Get predictions
                 vin, vls = vdata
                 output = self.model(vin.to(self.device))
+                
+                output = torch.nn.functional.interpolate(output, (256,256))
+                
                 mn_output = output[:,0,:,:] > self.threshold # micronuclei
                 mn_pred0 = mn_output.float()
                 n_output = output[:,1,:,:] > self.threshold
@@ -363,6 +359,9 @@ class MicronucleiModel():
             B = torch.cat(batch, axis=0)
             # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
             output = self.model(B.to(self.device))
+            
+            output = torch.nn.functional.interpolate(output, (256,256))
+            
             output = output > self.threshold
             pred0 = output.float()
             P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))

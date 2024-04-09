@@ -1,6 +1,3 @@
-# (Loss: {dice, cross entropy, focal}, LR = {10e-i, i belongs to 1 to 5}, batch_size={8,16,32}, train={finetuning, only training head(no finetuning)})
-
-# Generate 1 configuration.txt files of all possible combinations, use system args to run training_model.py
 import os
 import sys
 import torch
@@ -21,7 +18,7 @@ FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 EPOCHS = 20
-THRESHOLD = 0.25
+THRESHOLD = 0.5
 
 
 CURRENT_PATH = os.getcwd()
@@ -33,8 +30,8 @@ os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 
-if len(sys.argv) < 6:
-    print("Use: python grid_search.py imidx experiment_id loss_fn learning_rate batch_size finetune(True/False) gpu")
+if len(sys.argv) < 7:
+    print("Use: python grid_search.py imidx experiment_id loss_fn learning_rate batch_size finetune(True/False)")
     sys.exit()
 
 
@@ -44,8 +41,11 @@ LOSS_FN = str(sys.argv[3])
 LR = float(sys.argv[4])
 BATCH_SIZE = int(sys.argv[5])
 FINETUNE = eval(sys.argv[6]) # dont use bool, only eval turns string to boolean!
-gpu = sys.argv[7]
-device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# gpu = sys.argv[7]
+# device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
+
+os.makedirs('config_output')
 
 # Train
 files = os.listdir(DIRECTORY)
@@ -73,7 +73,8 @@ wandb.init(
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
         "patch_size":PATCH_SIZE,
-        "weight_decay":1e-6
+        "weight_decay":1e-6,
+        "probability_threshold":THRESHOLD
     },
     name=f'experiment{experiment_id}-{image_id}'
 )
@@ -97,7 +98,7 @@ model.train(epochs=EPOCHS,
             loss_fn=LOSS_FN, 
             output_dir=OUTPUT_DIR, 
             finetune=FINETUNE,
-            l1=1e-6)
+            weight_decay=1e-6)
 
 # Save
 model.save(outdir=OUTPUT_DIR)
@@ -112,8 +113,7 @@ validation_file = annot_files[i]
 imid = validation_file.split('.')[0]
 
 # Load image and annotations
-# im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
-im = mnds.read_image(DIRECTORY, imid, 'extra-edge.tif', scale=SCALE_FACTOR)
+im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
 im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
 mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
 
@@ -126,4 +126,7 @@ np.save(filename, probabilities)
 
 mn_pred = probabilities[0,:,:] > THRESHOLD
 evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+
+# release the resources
+torch.cuda.empty_cache()
 wandb.finish()

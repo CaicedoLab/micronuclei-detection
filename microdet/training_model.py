@@ -26,7 +26,7 @@ DIRECTORY = CURRENT_PATH + '/dataset_v2'
 OUTPUT_DIR = "/model_output/nuclei_experiments/"
 
 # set CHTC writeable cahce directory
-os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch/'
 
 EPOCHS = 20
 BATCH_SIZE = 32

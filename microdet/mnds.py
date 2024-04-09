@@ -253,15 +253,13 @@ class MicronucleiDataset(Dataset):
             (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
         ))
         
-        if len(np.unique(mn_mask)) == 1: # if the sliced region of mask has no annotation
-            return None
-            # Move labels to a local reference frame
-            #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
-            #grid = np.zeros((32,32))
-            #for c in labels:
-            #    grid[c[0],c[1]] = 1.0
-            
-            # Apply augmentations
+        # Move labels to a local reference frame
+        #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
+        #grid = np.zeros((32,32))
+        #for c in labels:
+        #    grid[c[0],c[1]] = 1.0
+        
+        # Apply augmentations
         if self.mode == "random" and self.transform is not None:
             #grid = patch_to_rgb(grid, edges=False)
             #crop, grid = self.transform(crop, grid)
