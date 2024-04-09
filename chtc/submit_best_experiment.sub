@@ -1,0 +1,30 @@
+# Submit file
+universe = docker
+# link to self-built docker image
+docker_image = yasuo0810/dinov2_chtc:v0.5
+
+# set the executable to run
+executable = ./run_best_experiment.sh
+arguments = -t $(tile_id) -i $(imidx)
+log = log/log_best$(ProcID).log
+error = error/job_best$(ProcID).err
+output = output/job_best$(ProcID).out
+
+transfer_input_files = microdet.tar.gz
+transfer_output_files = microdet/best_experiment
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+request_cpus = 8
+request_gpus = 1 
+
++WantGPULab = true
++GPUJobLength = "medium"
+
+request_memory = 60GB
+request_disk = 60GB
+
+Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
+
+queue tile_id,imidx from best_experiment.txt
