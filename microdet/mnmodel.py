@@ -158,7 +158,8 @@ class MicronucleiModel():
         elif loss_fn == 'focal':
             self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
         elif loss_fn == 'combined':
-            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=1, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
+            # Use all default parameters, gamma = 2 so far is good
+            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9) # add weight decy / regularization
         

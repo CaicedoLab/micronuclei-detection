@@ -46,8 +46,7 @@ done
 shift $((OPTIND -1))
 
 output_file="experiment${experiment_id}_${loss_fn}_${learning_rate}_${batch_size}_${finetune}.txt"
-for imidx in $(seq 0 9); do
-    python3 grid_search.py $imidx "$experiment_id" "$loss_fn" "$learning_rate" "$batch_size" "$finetune"
-done > "$output_file"
+# for imidx in $(seq 0 9); do
+python3 grid_search.py "$experiment_id" "$loss_fn" "$learning_rate" "$batch_size" "$finetune" > "$output_file"
 
 cp "$output_file" config_output/

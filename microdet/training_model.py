@@ -49,7 +49,7 @@ files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')]
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
-annot_files = annot_files[0:10]
+# annot_files = annot_files[0:10] # using all 18 images
 
 # In[5]:
 

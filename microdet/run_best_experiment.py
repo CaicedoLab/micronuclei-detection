@@ -59,21 +59,22 @@ files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
-annot_files = annot_files[0:10]
+# annot_files = annot_files[0:10] # using all 18 images
 
 
 training_files = annot_files.copy()
 validation_files = [annot_files[i]]
 del training_files[i]
 
-image_id = validation_files[0].split('.')[0].split('_')[-1]
+lst = validation_files[0].split('.')[0].split('_')[-2:]
+image_id = f'{lst[0]}-{lst[1]}'
 wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
 wandb.init(
     project='Best_Experiment',
     config={
-        "architecture":"128 resolution: 2 blocks of one 2x2 upscale and one 3x3 conv layers",
+        "architecture":"2 upscale followed with 3 blocks of conv, norm, relu and skip connections",
         "Loss": LOSS_FN,
-        "Loss Weight": "gamma=1",
+        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,
         "batch_size":BATCH_SIZE,
         "learning_rate":LR,
@@ -83,7 +84,7 @@ wandb.init(
         "weight_decay":WEIGHT_DECAY,
         "probability_threshold":THRESHOLD
     },
-    name=f'{image_id}'
+    name=f'1st-{image_id}'
 )
 
 # Create model

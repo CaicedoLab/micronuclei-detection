@@ -6,9 +6,9 @@ docker_image = yasuo0810/dinov2_chtc:v0.5
 # set the executable to run
 executable = ./run_best_experiment.sh
 arguments = -t $(tile_id) -i $(imidx)
-log = log/log_best$(ProcID).log
-error = error/job_best$(ProcID).err
-output = output/job_best$(ProcID).out
+log = log/log_best_$(Cluster)_$(ProcID).log
+error = error/job_best_$(Cluster)_$(ProcID).err
+output = output/job_best_$(Cluster)_$(ProcID).out
 
 transfer_input_files = microdet.tar.gz
 transfer_output_files = microdet/best_experiment
