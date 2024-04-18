@@ -28,36 +28,124 @@ def trunc_vit_tiny(patch_size=16, **kwargs):
 
 class DetectionModel(torch.nn.Module):
     
-    def __init__(self, device, stride=8):
+    def __init__(self, device, stride=8, finetune=False):
         super(DetectionModel, self).__init__()
         
-        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device)
-
-        # With VIT-tiny
-        #self.vit_model = trunc_vit_tiny(patch_size=1, in_chans=384, device=device)
-        #self.vit_model.to(device)
-        #self.classifier = torch.nn.Conv1d(192, 1, 1, 1)
-
-        # With linear classifier
-        self.classifier = torch.nn.Conv2d(384, 1, (1,1))
-        self.classifier.to(device)
+        self.finetune = finetune
         
+        # pretrained backbone has patch size 14 x 14, split into 14 row and columns
+        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+
+        # self.decoder = torch.nn.Sequential(
+        #     # No activation after upscaling performs better
+        #     torch.nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=(2,2), stride=2),
+        #     torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
+        #     # Normalization here
+        #     torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
+        #     torch.nn.ReLU(),
+            
+        #     torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2),
+        #     torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
+        #     # Normalization here
+        #     torch.nn.LayerNorm([96, 128, 128]), # best
+        #     torch.nn.ReLU(),
+        # )
+        # self.decoder.to(device)
+        
+        self.upscale1 = torch.nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=(2,2), stride=2)
+        self.upscale1.to(device)
+        self.block1 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
+            torch.nn.ReLU(),
+        )
+        self.block2 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
+            torch.nn.ReLU(),
+        )
+        self.block3 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
+            torch.nn.ReLU(),
+        )
+        self.block1.to(device)
+        self.block2.to(device)
+        self.block3.to(device)
+        
+        self.upscale2 = torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2)
+        self.upscale2.to(device)
+        self.block4 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([96, 128, 128]), # best
+            torch.nn.ReLU(),
+        )
+        self.block5 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([96, 128, 128]), # best
+            torch.nn.ReLU(),
+        )
+        self.block6 = torch.nn.Sequential(
+            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
+            torch.nn.LayerNorm([96, 128, 128]), # best
+            torch.nn.ReLU(),
+        )
+        self.block4.to(device)
+        self.block5.to(device)
+        self.block6.to(device)
+        
+        # classification layer
+        self.classifier = torch.nn.Conv2d(in_channels=96, out_channels=2, kernel_size=(1,1))
+        self.classifier.to(device)
+                
     def forward(self, x):
-        with torch.no_grad():
+        # Skip Connections
+        if self.finetune:
             x = torch.nn.functional.interpolate(x, (448,448))
             x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-        B,T,C = x.shape
-        W,H = 32,32
-
-        # With VIT-tiny
-        #x = x.permute(0,2,1).reshape((B,C,W,H))
-        #x = self.vit_model(x)
-        #x = self.classifier(x.permute(0,2,1))
-        #x = torch.reshape(x, (-1, W*H+1))[:,1:]
-
-        # With linear classifier
-        x = self.classifier(x.reshape(B,W,H,C).permute(0,3,1,2))
-        x = torch.reshape(x, (B, W*H))
-        #x = F.softmax(x, dim=1)
+            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
+            W,H = 32,32
+            x = x.reshape(B,W,H,C).permute(0,3,1,2)
+            # x = self.decoder(x)
+            
+            x = self.upscale1(x)
+            residual1 = x
+            x = self.block1(x)
+            residual2 = x
+            x = self.block2(x) + residual1
+            x = self.block3(x) + residual2
+            
+            x = self.upscale2(x)
+            residual3 = x
+            x = self.block4(x)
+            residual4 = x
+            x = self.block5(x) + residual3
+            x = self.block6(x) + residual4
+            
+            x = self.classifier(x)
+        else:
+            with torch.no_grad():
+                x = torch.nn.functional.interpolate(x, (448,448))
+                x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
+            W,H = 32,32
+            x = x.reshape(B,W,H,C).permute(0,3,1,2)
+            # x = self.decoder(x)
+            
+            x = self.upscale1(x)
+            residual1 = x
+            x = self.block1(x)
+            residual2 = x
+            x = self.block2(x) + residual1
+            x = self.block3(x) + residual2
+            
+            x = self.upscale2(x)
+            residual3 = x
+            x = self.block4(x)
+            residual4 = x
+            x = self.block5(x) + residual3
+            x = self.block6(x) + residual4
+            
+            x = self.classifier(x)
         
         return x

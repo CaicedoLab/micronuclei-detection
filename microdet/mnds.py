@@ -39,6 +39,7 @@ def read_image(directory, imid, suffix, scale=1.0):
 def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
     img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
+    
     # Transform annotations to labels
     otl = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
@@ -58,6 +59,18 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
 
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
+
+def read_micronuclei_masks(directory, imid, scale_factor=1.0):
+    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
+    edge = otl[:,:,0] > 0 # Use only the red channel
+    mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
+    return mask + edge
+
+def read_nuclei_masks(directory, imid, scale_factor=1.0):
+    # otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
+    otl = read_image(directory, imid, 'nuclei-clean.tif', scale=scale_factor)
+    otl = otl > 0 # It's a labeled matrix, so make it binary
+    return otl
 
 # PATCH AUGMENTATIONS
 def detection_transforms(patch, target):
@@ -106,9 +119,10 @@ class MicronucleiDataset(Dataset):
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
             #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
             mni = read_micronuclei_annotations(directory, imid)
+            mnm = read_micronuclei_masks(directory, imid)
+            nuc = read_nuclei_masks(directory, imid)
             all_locs.append(mni)
-            self.images[imid] = {"image":im, "loc":mni}
-            #break
+            self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             
         self.all_locs = pd.concat(all_locs)
         
@@ -208,8 +222,10 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                else:
-                    print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
+                
+                # comment ouf only for grid search purpose, remove commenting after grid search
+                # else:
+                #     print(f"{imid}: Micronuclei at ({r.y},{r.x}) is not covered by any patches")
 
             # Put all patches in the index
             for k in range(C.shape[0]):
@@ -228,22 +244,31 @@ class MicronucleiDataset(Dataset):
         
         # Crop patches out of the full image
         PS = self.patch_size
-        y,x = int(item["coord"][0]), int(item["coord"][1])
-        crop = self.images[item["Image"]]["image"][y:y+PS,x:x+PS]
+        r,c = int(item["coord"][0]), int(item["coord"][1])
+        crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
+        mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
+        n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
         crop = patch_to_rgb(crop, self.edges)
+        mask = torch.Tensor(np.concatenate(
+            (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
+        ))
         
         # Move labels to a local reference frame
-        labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
-        grid = np.zeros((32,32))
-        for c in labels:
-            grid[c[0],c[1]] = 1.0
+        #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
+        #grid = np.zeros((32,32))
+        #for c in labels:
+        #    grid[c[0],c[1]] = 1.0
         
         # Apply augmentations
         if self.mode == "random" and self.transform is not None:
-            grid = patch_to_rgb(grid, edges=False)
-            crop, grid = self.transform(crop, grid)
-            grid = grid[0,:,:]
+            #grid = patch_to_rgb(grid, edges=False)
+            #crop, grid = self.transform(crop, grid)
+            #grid = grid[0,:,:]
             
-        return crop, grid
-        
+            # mask = patch_to_rgb(mask, edges=False)
+            crop, mask = self.transform(crop, mask)
+            # mask = mask[0,:,:]
+            
+        return crop, mask
+            
         
