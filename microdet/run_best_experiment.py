@@ -68,7 +68,7 @@ del training_files[i]
 
 lst = validation_files[0].split('.')[0].split('_')[-2:]
 image_id = f'{lst[0]}-{lst[1]}'
-wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+wandb.login(key='')
 wandb.init(
     project='Best_Experiment',
     config={

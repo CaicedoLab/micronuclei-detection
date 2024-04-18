@@ -57,7 +57,7 @@ annot_files = annot_files[0:10]
 
 # print(" *** ", validation_files, " *** ")
 # image_id = validation_files[0].split('.')[0].split('_')[-1]
-wandb.login(key='b3f4f9254c123781af918799b27affa92d8f4eeb')
+wandb.login(key='')
 wandb.init(
     project='grid_search_finetune',
     config={
