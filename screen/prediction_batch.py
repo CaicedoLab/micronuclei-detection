@@ -16,6 +16,10 @@ import evaluation
 DIRECTORY = "/scr/yren/"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+folder_path = "/scr/vidit/screen-data/plate-1-channel-one"
+file_names = os.listdir(folder_path)
+
+
 SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
@@ -30,6 +34,10 @@ LR = 0.0001
 
 # Start timing the entire script
 start_time = time.time()
+
+def model_predict(model, im, stride=1, step=16, batch_size=32):
+    probabilities = model.predict(im, stride=stride, step=step, batch_size=batch_size)
+    return probabilities
 
 model = mnmodel.MicronucleiModel(
     data_dir = DIRECTORY,
@@ -48,35 +56,13 @@ print(f"Model loading time: {model_load_end - model_load_start} seconds")
 model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE, edges=True)
 model.load("best_model.pth", model_dir="")
 
-save_folder = ""
+save_folder = "/scr/vidit/screen-data-probability-map/plate-1-channel-one"
 
 # Loading image
 file = "/scr/vidit/screen-data/plate-1-channel-one/20X_c0-DAPI-GFP_A2_Tile-1.phenotype.tif"
 
-# Timing the image loading
-image_load_start = time.time()
-im = io.imread(file)
-image_load_end = time.time()
-
-print(f"Image loading time: {image_load_end - image_load_start} seconds")
-
-# Timing the prediction
-prediction_start = time.time()
-probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
-prediction_end = time.time()
-
-print(f"Prediction time: {prediction_end - prediction_start} seconds")
-
-filename = "/scr/vidit/screen-data-probability-map/plate-1-channel-one/20X_c0-DAPI-GFP_A2_Tile-1.phenotype.npy"
-
-# Timing the saving process
-save_start = time.time()
-np.save(filename, probabilities)
-save_end = time.time()
-
-print(f"Saving time: {save_end - save_start} seconds")
-
-# End timing the entire script
-end_time = time.time()
-
-print(f"Total script time: {end_time - start_time} seconds")
+#for file_name in file_names:
+im = io.imread(os.path.join(folder_path, file))
+im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
+probs = model_predict(model, im, stride=STRIDE, step=STEP, batch_size=BATCH_SIZE)
+np.save(os.path.join(save_folder, file.replace(".png", ".npy")), probs)
