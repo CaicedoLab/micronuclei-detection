@@ -18,7 +18,13 @@ FEATURE_SIZE = 384
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 EPOCHS = 20
-THRESHOLD = 0.25
+THRESHOLD = 0.5
+
+LOSS_FN = 'combined'
+LR = 1e-5
+BATCH_SIZE = 32
+FINETUNE = True
+WEIGHT_DECAY = 1e-6
 
 
 CURRENT_PATH = os.getcwd()
@@ -35,22 +41,6 @@ if len(sys.argv) < 2:
     
 i = int(sys.argv[1])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-SCALE_FACTOR = 1.0
-PATCH_SIZE = 256
-STRIDE = 8
-FEATURE_SIZE = 384
-TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-STEP = 16
-EPOCHS = 20
-THRESHOLD = 0.5
-
-LOSS_FN = 'combined'
-LR = 1e-5
-BATCH_SIZE = 32
-FINETUNE = True
-WEIGHT_DECAY = 1e-6
-
 
 os.makedirs('best_experiment')
 
