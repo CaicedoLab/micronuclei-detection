@@ -66,4 +66,4 @@ for file_name in file_names:
     im = io.imread(os.path.join(folder_path, file_name))
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     probs = model_predict(model, im, stride=1, step=STEP, batch_size=BATCH_SIZE)
-    np.save(os.path.join(save_folder, file_name.replace(".tif", ".npy")), probs)
+    np.save(os.path.join(save_folder, file_name.replace(".tif", ".npy")), probs[0])
