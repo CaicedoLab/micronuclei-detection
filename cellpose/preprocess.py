@@ -35,7 +35,6 @@ def divide_image(folder_path, save_path, extension):
                 save_filename = f"{base_name}_{i*10+j}{extension}"
                 save_filepath = os.path.join(save_path, save_filename)
                 cv2.imwrite(save_filepath, sub_img)
-                print(f"Saved {save_filepath}")
 
 # Run for different extensions
 #divide_image(folder_img_path, save_path, ".png")
@@ -64,6 +63,7 @@ def remove_empty_images(folder_path):
             os.remove(image)
     print(f"Total number of images removed: {counter}")
 
+#remove_empty_images(folder_path)
 
 folder_path = "/scr/vidit/dataset_nuclei_division"
 
@@ -105,7 +105,7 @@ def join_masks(tif_path, outlines_path):
     return labels
 
 def get_masks(folder_path):
-    for image in glob.glob(folder_path + "/*_outlines_*"):
+    for image in glob.glob(folder_path + "/*phenotype_outlines_*"):
         outlines_path = image
         image = image.replace("phenotype_outlines", "nuclei-clean")
         image = image.replace(".png", ".tif")
@@ -113,6 +113,9 @@ def get_masks(folder_path):
         labels = join_masks(tif_image, outlines_path)
         image = image.replace("nuclei-clean", "combined_outlines")
         skimage.io.imsave(image, labels)
+
+
+#get_masks(folder_path)
 
 def change_label_names(folder_path):
     for image_path in glob.glob(folder_path + "*combined_outlines*"):
@@ -133,4 +136,4 @@ def change_label_names(folder_path):
         #os.rename(orig_path, image_path)
 
 
-#change_label_names("/scr/vidit/dataset_nuclei_division/train/")
+change_label_names("/scr/vidit/dataset_nuclei_division/test/")
