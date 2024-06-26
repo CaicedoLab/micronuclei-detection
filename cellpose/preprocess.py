@@ -6,6 +6,11 @@ import numpy as np
 import glob
 import cv2
 import os
+import matplotlib.pyplot as plt
+import numpy as np
+import skimage
+import scipy
+
 
 folder_img_path = "/scr/vidit/dataset_v2"
 save_path = "/scr/vidit/dataset_nuclei_division"
@@ -36,7 +41,6 @@ def divide_image(folder_path, save_path, extension):
 #divide_image(folder_img_path, save_path, ".png")
 #divide_image(folder_img_path, save_path, ".tif")
 
-
 '''
 This function will look at all the images present in the following function and remove
 all the images that are black. This is done because the images that are black are not
@@ -61,8 +65,72 @@ def remove_empty_images(folder_path):
     print(f"Total number of images removed: {counter}")
 
 
-def join_masks(png_file, tif_file):
-    png_img = cv2.imread(png_file)
-    tif_img = cv2.imread(tif_file)
+folder_path = "/scr/vidit/dataset_nuclei_division"
 
-    
+def remove_empty_nuclei_masks(folder_path):
+    counter = 0
+    for image in glob.glob(folder_path + "/*nuclei-clean*"):
+        img = Image.open(image)
+        #print(image)
+        if not img.convert('L').getbbox():
+            os.remove(image)
+            counter += 1
+            image = image.replace("nuclei-clean", "phenotype")
+            os.remove(image)
+            image = image.replace("phenotype", "phenotype_outlines")
+            image = image.replace(".tif", ".png")
+            os.remove(image)
+    print(f"Total number of images removed: {counter}")
+
+#remove_empty_nuclei_masks(folder_path)
+
+'''
+This function will take the tif image and the outlines image and merge them together 
+to have one label for them making it easier to feed it into cellpose.
+'''
+
+
+def join_masks(tif_path, outlines_path):
+    tif_img = skimage.io.imread(tif_path, as_gray=True)
+    outlines_img = skimage.io.imread(outlines_path)
+
+    outlines_img = outlines_img[:,:,0] > 0 # Use only the red channel
+    outlines_img = scipy.ndimage.binary_fill_holes(outlines_img) ^ outlines_img
+    tif_img[outlines_img] = 1
+    seg = tif_img > 0
+    #Merge seg and outlines_img together, overlay the outlines_img on seg
+    labels = skimage.measure.label(seg)
+    # Not doing object edge detection as the objects start touching then
+    #labels = skimage.morphology.dilation(labels)  # recover object edge
+    return labels
+
+def get_masks(folder_path):
+    for image in glob.glob(folder_path + "/*_outlines_*"):
+        outlines_path = image
+        image = image.replace("phenotype_outlines", "nuclei-clean")
+        image = image.replace(".png", ".tif")
+        tif_image = image
+        labels = join_masks(tif_image, outlines_path)
+        image = image.replace("nuclei-clean", "combined_outlines")
+        skimage.io.imsave(image, labels)
+
+def change_label_names(folder_path):
+    for image_path in glob.glob(folder_path + "*combined_outlines*"):
+        orig_path = image_path
+        num = image_path.split(".")[-2].split("_")[-1]
+        mid_string = image_path.split(".")[-2]
+        mid_string = mid_string.replace(f"combined_outlines_{num}", "phenotype_outlines")
+        image_path = image_path.split(".")[0] + f".{num}_" + mid_string + ".tif"
+        #print(image_path)
+        os.rename(orig_path, image_path)
+    for image_path in glob.glob(folder_path + "*phenotype*"):
+        orig_path = image_path
+        num = image_path.split(".")[-2].split("_")[-1]
+        mid_string = image_path.split(".")[-2]
+        mid_string = mid_string.replace(f"_{num}", "")
+        image_path = image_path.split(".")[0] + f".{num}_" + mid_string + ".tif"
+        #print(image_path)
+        #os.rename(orig_path, image_path)
+
+
+#change_label_names("/scr/vidit/dataset_nuclei_division/train/")
