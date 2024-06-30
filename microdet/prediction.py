@@ -41,8 +41,7 @@ BATCH_SIZE = 32
 EPOCHS = 20
 LR = 0.0001
 
-THRESHOLD = 0.25
-# THRESHOLD = 0.5
+THRESHOLD = 0.5
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
