@@ -38,7 +38,7 @@ def compare_two_labels(label_model, label_gt, return_IoU_matrix, debug=False):
             return [nb_nuclei_model, 0, 0]
     
     # build IoU matrix
-    IoUs = np.full((nb_nuclei_gt, nb_nuclei_model), -1, dtype = np.float32)
+    IoUs = np.full((nb_nuclei_gt, nb_nuclei_model), -1.0, dtype = np.float32)
 
     # calculate IoU for each nucleus index_gt in GT and nucleus index_pred in prediction    
     # TODO improve runtime of this algorithm
