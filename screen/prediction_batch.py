@@ -20,14 +20,12 @@ device = "cuda"
 
 folder_path = "plate_number_images_idea"
 file_names = os.listdir(folder_path)
-#file_names = np.random.choice(file_names, 20, replace=False) 
 
 SCALE_FACTOR = 1.0
 
 PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384 # dinov2 vit small model
-# FEATURE_SIZE = 768 # dinov2 vit base model
 TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 BATCH_SIZE = 128

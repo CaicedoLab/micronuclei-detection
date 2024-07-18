@@ -1,5 +1,3 @@
-# My very first CHTC job
-#
 # print a 'hello' message to the job's terminal output:
 echo "Hello CHTC from Job $1 running on `whoami`@`hostname`"
 
