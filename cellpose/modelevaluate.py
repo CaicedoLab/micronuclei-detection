@@ -21,21 +21,18 @@ This function will make the appropriate train and test directories so that we ca
 cellpose training functions after that
 '''
 
-def leave_one_out(img_path, filename):
-    filenames = glob.glob(os.path.join(img_path, "*phenotype.*"))
-    if not os.path.exists(os.join(img_path, "train")):
-        os.mkdir(os.join(img_path, "train"))
-    if not os.path.exists(os.join(img_path, "test")):
-        os.mkdir(os.join(img_path, "test"))
+
 
 
 def preprocess_image(dataset_size, model_type, img_path):
-    leave_one_out(img_path)
+    filenames = glob.glob(os.path.join(img_path, "*phenotype.*"))
+    for file in filenames:
+        leave_one_out(img_path, file)
     # go one directory behind in img_path
     os.chdir(os.pardir)
-    if not os.path.exists(f"{dataset_size}_{model_type}"):
-        os.mkdir(f"{dataset_size}_{model_type}")
-    os.chdir(f"{dataset_size}_{model_type}")
+    if not os.path.exists(f"{dataset_size}"):
+        os.mkdir(f"{dataset_size}")
+    os.chdir(f"{dataset_size}")
     print(os.getcwd())
     '''
     if dataset_size == "Small":
