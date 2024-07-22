@@ -13,7 +13,7 @@ import scipy
 
 
 folder_img_path = "/scr/vidit/dataset_v2"
-save_path = "/home/MORGRIDGE/vagrawal/vidit/dataset_nuclei_division"
+save_path = "/home/MORGRIDGE/vagrawal/vidit/dataset_sliding_division"
 
 def divide_image(filenames, save_path, extension):
     # Ensure the save_path exists
@@ -40,9 +40,8 @@ def divide_image(filenames, save_path, extension):
                     cv2.imwrite(save_filepath, sub_img)
 
 
-#print(os.listdir(folder_img_path))
-divide_image(os.listdir(folder_img_path), save_path, ".png")
-divide_image(os.listdir(folder_img_path), save_path, ".tif")
+#divide_image(os.listdir(folder_img_path), save_path, ".png")
+#divide_image(os.listdir(folder_img_path), save_path, ".tif")
 
 def divide_image_slide(filenames, save_path, extension, window_size=296, stride=74):
     # Ensure the save_path exists
@@ -65,12 +64,12 @@ def divide_image_slide(filenames, save_path, extension, window_size=296, stride=
                     right_side = base_name.split(".")[-1]
                     save_filename = f"{left_side}_{count}_{right_side}{extension}"
                     save_filepath = os.path.join(save_path, save_filename)
-                    print(save_filepath)
                     cv2.imwrite(save_filepath, sub_img)
                     count += 1
 
-#divide_image(folder_img_path, save_path, ".png", window_size=296, stride=74)
-#divide_image(folder_img_path, save_path, ".tif", window_size=296, stride=74)
+
+divide_image_slide(os.listdir(folder_img_path), save_path, ".png", window_size=296, stride=74)
+divide_image_slide(os.listdir(folder_img_path), save_path, ".tif", window_size=296, stride=74)
 
 '''
 This function will look at all the images present in the following function and remove
@@ -78,12 +77,10 @@ all the images that are black. This is done because the images that are black ar
 useful for training the model.
 '''
 
-
 def remove_empty_images(folder_path):
     counter = 0
     for image in glob.glob(folder_path + "/*.png"):
         img = Image.open(image)
-        #print(image)
         if not img.convert('L').getbbox():
             os.remove(image)
             counter += 1
