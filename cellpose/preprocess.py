@@ -68,8 +68,8 @@ def divide_image_slide(filenames, save_path, extension, window_size=296, stride=
                     count += 1
 
 
-divide_image_slide(os.listdir(folder_img_path), save_path, ".png", window_size=296, stride=74)
-divide_image_slide(os.listdir(folder_img_path), save_path, ".tif", window_size=296, stride=74)
+#divide_image_slide(os.listdir(folder_img_path), save_path, ".png", window_size=296, stride=74)
+#divide_image_slide(os.listdir(folder_img_path), save_path, ".tif", window_size=296, stride=74)
 
 '''
 This function will look at all the images present in the following function and remove
@@ -91,7 +91,7 @@ def remove_empty_images(folder_path):
             os.remove(image)
     print(f"Total number of images removed: {counter}")
 
-remove_empty_images(save_path)
+#remove_empty_images(save_path)
 
 
 def remove_empty_nuclei_masks(folder_path):
@@ -108,7 +108,7 @@ def remove_empty_nuclei_masks(folder_path):
             os.remove(image)
     print(f"Total number of images removed: {counter}")
 
-remove_empty_nuclei_masks(save_path)
+#remove_empty_nuclei_masks(save_path)
 
 '''
 This function will take the nuclei masks and the outlines masks and merge them together 
@@ -138,13 +138,13 @@ def get_masks(folder_path):
         image = image.replace(".png", ".tif")
         tif_image = image
         labels = join_masks(tif_image, outlines_path)
-        image = image.replace("nuclei-clean", "phenotype_outlines")
+        image = image.replace("nuclei-clean", "combined_outlines")
         skimage.io.imsave(image, labels)
         os.remove(outlines_path)
         os.remove(tif_image)
 
 
-get_masks(save_path)
+get_masks("/home/MORGRIDGE/vagrawal/vidit/dataset_v2")
 
 
 def change_label_names(folder_path):
