@@ -1,106 +1,111 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
+'''
+Train Best Model with all 18 images at once
+'''
 
 import os
 import sys
 import torch
-import wandb
+import os
+import sys
+import torch
+import numpy as np
+import mnds
 import mnmodel
+import evaluation
+import wandb
 
-# In[3]:
 
-SCALE_FACTOR = 1.0
-
-PATCH_SIZE = 256
-STRIDE = 8
-FEATURE_SIZE = 384 # dinov2 vit small model
-# FEATURE_SIZE = 768 # dinov2 vit base model
-TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
-
-# Reconstructing path in CHTC
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2'
-OUTPUT_DIR = "/model_output/nuclei_experiments/"
+OUTPUT_DIR = "/model_output/output/"
 
-# set CHTC writeable cahce directory
-os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch/'
+# set CHTC writeable cahce directory for pytorch and matplotlib
+os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
+os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
+torch.set_num_threads(8) # set only 8 cpus, the same number as requested
 
-EPOCHS = 20
-BATCH_SIZE = 32
-LR = 0.0001
-
-if len(sys.argv) < 3:
-    print("Use: python training_model.py imidx gpu")
+if len(sys.argv) < 2:
+    print("Use: training_model.py gpu")
     sys.exit()
 
-i = int(sys.argv[1])
-gpu = sys.argv[2]
+# gpu
+gpu = sys.argv[1]
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
+SCALE_FACTOR = 1.0
+PATCH_SIZE = 256
+STRIDE = 8
+FEATURE_SIZE = 384
+TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
+STEP = 16
+EPOCHS = 20
+THRESHOLD = 0.5
+ANNOTATION_TYPE = 'edge' # train on our own data
 
-# In[4]:
+LOSS_FN = 'combined'
+LR = 1e-5
+BATCH_SIZE = 32
+FINETUNE = True
+WEIGHT_DECAY = 1e-6
 
-
-# avoid files starting with . when untarring in CHTC
+# Train
 files = os.listdir(DIRECTORY)
-filelist = [file for file in files if not file.startswith('.')]
+filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
 # annot_files = annot_files[0:10] # using all 18 images
 
-# In[5]:
+training_files = annot_files.copy()
 
-# Initiate Weights and Biases Configuration
-# wandb.login(key='')
-# wandb.init(
-#     project='micronuclei-segmentation-training',
-    
-#     # hyperparameters
-#     config={
-#         "architecture":"3 blocks, 1 2x2 upscale, 2 3x3 conv layers",
-#         "learning_rate":LR,
-#         "epochs": EPOCHS,
-#         "feature_size":FEATURE_SIZE,
-#         "batch_size":BATCH_SIZE,
-#         "patch_size":PATCH_SIZE,
-#         "fine_tuning":False,
-#         "Scheduler":"Cos scheduler",
-#         "Loss": "Weighted Dice Loss"
-#     }
-# )
+# read the txt files to pass the key, just do not pass private information into github
+key_file = open('./wandb_key.txt', 'r')
+key = key_file.readline()
+wandb.login(key=key)
+wandb.init(
+    project='Best_Experiment',
+    config={
+        "architecture":"best model: train all 18 images",
+        "Loss": LOSS_FN,
+        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
+        "fine_tuning":FINETUNE,
+        "batch_size":BATCH_SIZE,
+        "learning_rate":LR,
+        "epochs": EPOCHS,
+        "feature_size":FEATURE_SIZE,
+        "patch_size":PATCH_SIZE,
+        "weight_decay":WEIGHT_DECAY,
+        "probability_threshold":THRESHOLD
+    },
+    name=f'train_18images'
+)
 
-#for i in range(len(annot_files)):
-if True:
+# Create model
+model = mnmodel.MicronucleiModel(
+    DIRECTORY, 
+    device, 
+    training_files=training_files, 
+    validation_files=[], # input empty list when train with all 18 images of the best model
+    patch_size=PATCH_SIZE,
+    scale_factor=SCALE_FACTOR,
+    edges=True
+)
 
-    # Leave-one-out split
-    training_files = annot_files.copy()
-    validation_files = [annot_files[i]]
-    del training_files[i]
-    
-    print(" *** ", validation_files, " *** ")
+# Train
+model.train(epochs=EPOCHS, 
+            batch_size=BATCH_SIZE, 
+            learning_rate=LR, 
+            loss_fn=LOSS_FN, 
+            output_dir=OUTPUT_DIR, 
+            finetune=FINETUNE,
+            weight_decay=WEIGHT_DECAY
+)
 
-    # Create model
-    model = mnmodel.MicronucleiModel(
-        DIRECTORY, 
-        device, 
-        training_files=training_files, 
-        validation_files=validation_files, 
-        patch_size=PATCH_SIZE,
-        scale_factor=SCALE_FACTOR,
-        edges=True
-    )
-    
-    # Train
-    model.train(EPOCHS, BATCH_SIZE, LR, loss_fn='dice', output_dir=OUTPUT_DIR, finetune=True, l1=1e-6)
-    
-    # Validate
-    model.validate()
-    
-    # Save
-    model.save(outdir=OUTPUT_DIR)
+# Save
+model.save(outdir=OUTPUT_DIR)
 
-
-# wandb.finish()
+# release the resources
+torch.cuda.empty_cache()
+wandb.finish()

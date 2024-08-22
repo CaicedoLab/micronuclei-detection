@@ -1,3 +1,5 @@
+#!/bin/bash
+# Best Experiment with LOO strategy in 18 images
 tar -xvf microdet.tar.gz
 rm microdet.tar.gz
 cd microdet

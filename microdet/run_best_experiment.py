@@ -1,3 +1,6 @@
+'''
+Train Best Model with Leave-One-Out Strategy
+'''
 import os
 import sys
 import torch
@@ -29,7 +32,7 @@ WEIGHT_DECAY = 1e-6
 
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/dataset_v2'
-OUTPUT_DIR = "/model_output/nuclei_experiments/"
+OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'

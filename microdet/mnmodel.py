@@ -144,11 +144,15 @@ class MicronucleiModel():
                 scale_factor=scale_factor,
                 patch_size=patch_size
             )
+        else:
+            self.need_validation_set = False
         
     def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
         # batch_size means number of images for each batch
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
-        self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
+        
+        if self.need_validation_set: # case for train the best model with all 18 images
+            self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
         self.model = detection.DetectionModel(device=self.device, finetune=finetune)
         
@@ -230,46 +234,50 @@ class MicronucleiModel():
             # wandb.log({"Scheduler LR":current_lr})
 
             # Validation
-            running_vloss = 0.0
-            self.model.eval()
-            with torch.no_grad():
-                for i, vdata in enumerate(self.val_dataloader):
-                    vin, vls = vdata
-                    vout = self.model(vin.to(self.device))
-                    # output resolution: 128
-                    vout = torch.nn.functional.interpolate(vout, (256,256))
-                    Y = vls.to(self.device).float()
-                    # Y = Y.unsqueeze(dim=1)
-                    
-                    # save validation image
-                    # filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
-                    # if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
-                    #     save_val_img(
-                    #         batch_idx=i,
-                    #         epoch_idx=epoch,
-                    #         prediction=vout[1], 
-                    #         ground_truth=Y[1], 
-                    #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                    #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                    #     )
-                    # else:
-                    #     save_val_img(
-                    #         batch_idx=i,
-                    #         epoch_idx=epoch,
-                    #         prediction=vout[0], 
-                    #         ground_truth=Y[0], 
-                    #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                    #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                    #     )
+            if self.need_validation_set:
+                running_vloss = 0.0
+                self.model.eval()
+                with torch.no_grad():
+                    for i, vdata in enumerate(self.val_dataloader):
+                        vin, vls = vdata
+                        vout = self.model(vin.to(self.device))
+                        # output resolution: 128
+                        vout = torch.nn.functional.interpolate(vout, (256,256))
+                        Y = vls.to(self.device).float()
+                        # Y = Y.unsqueeze(dim=1)
+                        
+                        # save validation image
+                        # filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
+                        # if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
+                        #     save_val_img(
+                        #         batch_idx=i,
+                        #         epoch_idx=epoch,
+                        #         prediction=vout[1], 
+                        #         ground_truth=Y[1], 
+                        #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                        #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                        #     )
+                        # else:
+                        #     save_val_img(
+                        #         batch_idx=i,
+                        #         epoch_idx=epoch,
+                        #         prediction=vout[0], 
+                        #         ground_truth=Y[0], 
+                        #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
+                        #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
+                        #     )
 
-                    vloss = self.loss_fn(vout, Y)
-                    running_vloss += vloss
-            avg_vloss = running_vloss / (i+1)
+                        vloss = self.loss_fn(vout, Y)
+                        running_vloss += vloss
+                avg_vloss = running_vloss / (i+1)
             C = time.time() - T
             # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
             # log metrics to wandb
-            wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
+            if self.need_validation_set:
+                wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
+            else:
+                wandb.log({"Train_loss":avg_loss})
             
             epoch_number += 1
 
@@ -335,7 +343,8 @@ class MicronucleiModel():
         
         
     def save(self, outdir="models/"):
-        output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
+        # output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
+        output_file = f'{self.data_dir}{outdir}best_model.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
