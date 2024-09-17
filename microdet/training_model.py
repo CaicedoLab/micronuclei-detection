@@ -8,9 +8,6 @@ Train Best Model with all 18 images at once
 import os
 import sys
 import torch
-import os
-import sys
-import torch
 import numpy as np
 import mnds
 import mnmodel
