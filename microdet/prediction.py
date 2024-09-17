@@ -58,9 +58,8 @@ device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 # avoid files starting with . when untarring in CHTC
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')]
-filelist = [file for file in files if file.endswith('.tif')]
-# annot_files = [x for x in filelist if x.endswith('png')]
-# annot_files.sort()
+annot_files = [x for x in filelist if x.endswith('png')]
+annot_files.sort()
 
 # Validate
 predictions_dir = DIRECTORY + OUTPUT_DIR
@@ -72,10 +71,9 @@ model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE, edges
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
 model.load('best_model.pth', model_dir=models_dir)
 
-for i in range(0, len(filelist)):
+for i in range(0, len(annot_files)):
     # Select image for analysis
-    # validation_file = annot_files[i]
-    validation_file = filelist[i]
+    validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
     
     # Load image and annotations
@@ -85,8 +83,7 @@ for i in range(0, len(filelist)):
     
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
-    # filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    filename = predictions_dir + validation_file.replace('phenotype.tif','_probabilities')
+    filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
