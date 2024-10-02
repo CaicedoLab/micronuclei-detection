@@ -373,6 +373,7 @@ class MicronucleiModel():
             output = torch.nn.functional.interpolate(output, (256,256))
             
             output = output > self.threshold
+            
             pred0 = output.float()
             P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
             P = P.cpu().numpy()
