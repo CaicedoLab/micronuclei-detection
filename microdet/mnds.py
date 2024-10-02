@@ -193,6 +193,7 @@ class MicronucleiDataset(Dataset):
                 self.index.append({"Image":imid, "coord": C[k,:].tolist(), "locs":[]})
                 pointer += 1
                 count += 1
+                
 
     def index_patches(self):
         self.index = []
@@ -243,16 +244,38 @@ class MicronucleiDataset(Dataset):
         item = self.index[idx]
         
         # Crop patches out of the full image
-        PS = self.patch_size
-        r,c = int(item["coord"][0]), int(item["coord"][1])
-        crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
-        mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
-        n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
-        crop = patch_to_rgb(crop, self.edges)
-        mask = torch.Tensor(np.concatenate(
-            (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
-        ))
+        if False: # original code
+            PS = self.patch_size
+            r,c = int(item["coord"][0]), int(item["coord"][1])
+            crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
+            crop = patch_to_rgb(crop, self.edges)
+            mask = torch.Tensor(np.concatenate(
+                (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
+            ))
         
+        if True: # new code with sampling from gaussian distribution
+            PS_height, PS_width = np.random.normal(loc=256, scale=5, size=2)
+            PS_height, PS_width = int(PS_height), int(PS_width)
+            r,c = int(item["coord"][0]), int(item["coord"][1])
+            crop = self.images[item["Image"]]["image"][r:r+PS_height,c:c+PS_width]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+PS_height,c:c+PS_width]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+PS_height,c:c+PS_width]
+            
+            crop = patch_to_rgb(crop, self.edges)
+            mask = torch.Tensor(np.concatenate(
+                (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
+            ))
+
+            # interpolate to Patch Size x Patch Size before concatention
+            crop = torch.nn.functional.interpolate(crop.unsqueeze(0), (self.patch_size, self.patch_size))
+            mask = torch.nn.functional.interpolate(mask.unsqueeze(0), (self.patch_size, self.patch_size))
+
+            crop = crop.squeeze(0)
+            mask = mask.squeeze(0)
+
+            
         # Move labels to a local reference frame
         #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
         #grid = np.zeros((32,32))
@@ -260,7 +283,8 @@ class MicronucleiDataset(Dataset):
         #    grid[c[0],c[1]] = 1.0
         
         # Apply augmentations
-        if self.mode == "random" and self.transform is not None:
+        # if self.mode == "random" and self.transform is not None:
+        if self.mode in ["random", "gaussian"] and self.transform is not None:
             #grid = patch_to_rgb(grid, edges=False)
             #crop, grid = self.transform(crop, grid)
             #grid = grid[0,:,:]

@@ -20,7 +20,7 @@ import mnmodel
 import evaluation
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/plate_1_missing'
+DIRECTORY = CURRENT_PATH + '/dataset_v2'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -79,7 +79,7 @@ for i in range(0, len(annot_files)):
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    # mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR) # no ground truth in plates
+    mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR) # no ground truth in plates
     
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
@@ -87,7 +87,7 @@ for i in range(0, len(annot_files)):
     np.save(filename, probabilities)
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
-    # evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
     
     # release the resources
     torch.cuda.empty_cache()
