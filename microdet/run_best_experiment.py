@@ -38,14 +38,15 @@ OUTPUT_DIR = "/model_output/output/"
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
-if len(sys.argv) < 2:
-    print("Use: python run_best_experiment.py imidx")
+if len(sys.argv) < 3:
+    print("Use: python run_best_experiment.py imidx gpu")
     sys.exit()
     
 i = int(sys.argv[1])
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+gpu = int(sys.argv[2])
+device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
-os.makedirs('best_experiment')
+# os.makedirs('best_experiment')
 
 # Train
 files = os.listdir(DIRECTORY)
@@ -61,11 +62,14 @@ del training_files[i]
 
 lst = validation_files[0].split('.')[0].split('_')[-2:]
 image_id = f'{lst[0]}-{lst[1]}'
-wandb.login(key='')
+
+key_file = open('./wandb_key.txt', 'r')
+key = key_file.readline()
+wandb.login(key=key)
 wandb.init(
     project='Best_Experiment',
     config={
-        "architecture":"2 upscale followed with 3 blocks of conv, norm, relu and skip connections",
+        "architecture":"2nd: gassuain sampling + interpolation",
         "Loss": LOSS_FN,
         "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,

@@ -269,12 +269,12 @@ class MicronucleiDataset(Dataset):
             ))
 
             # interpolate to Patch Size x Patch Size before concatention
+            # interpolation messed up binary values sometime, remember to check
             crop = torch.nn.functional.interpolate(crop.unsqueeze(0), (self.patch_size, self.patch_size))
             mask = torch.nn.functional.interpolate(mask.unsqueeze(0), (self.patch_size, self.patch_size))
 
             crop = crop.squeeze(0)
             mask = mask.squeeze(0)
-
             
         # Move labels to a local reference frame
         #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]

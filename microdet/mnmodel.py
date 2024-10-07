@@ -101,7 +101,7 @@ class FocalLoss(torch.nn.Module):
     
 class CombinedFocalDiceLoss(torch.nn.Module):
     def __init__(self, focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2.0, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5):
-        super(CombinedFocalDiceLoss, self).__init__()
+        super().__init__() # call initialization method from torch.nn.Module
         self.focal_loss = FocalLoss(alpha=alpha, gamma=gamma, reduction=reduction)
         self.dice_loss = DiceLoss(alpha=dice_alpha, beta=dice_beta, smoothing=smoothing, reduction=reduction)
         self.focal_weight = focal_weight
@@ -144,6 +144,7 @@ class MicronucleiModel():
                 scale_factor=scale_factor,
                 patch_size=patch_size
             )
+            self.need_validation_set = True
         else:
             self.need_validation_set = False
         
@@ -228,10 +229,6 @@ class MicronucleiModel():
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, None)
             
-            # Update Learning Rate
-            # self.scheduler.step()
-            # current_lr = self.optimizer.param_groups[0]['lr']
-            # wandb.log({"Scheduler LR":current_lr})
 
             # Validation
             if self.need_validation_set:
@@ -244,29 +241,7 @@ class MicronucleiModel():
                         # output resolution: 128
                         vout = torch.nn.functional.interpolate(vout, (256,256))
                         Y = vls.to(self.device).float()
-                        # Y = Y.unsqueeze(dim=1)
                         
-                        # save validation image
-                        # filename = self.validation_files[0].split('.')[0].split('_')[-1] # shorten filename
-                        # if len(vin) != 1: # when they batch contains more than 1 image, select the 2nd one
-                        #     save_val_img(
-                        #         batch_idx=i,
-                        #         epoch_idx=epoch,
-                        #         prediction=vout[1], 
-                        #         ground_truth=Y[1], 
-                        #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                        #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                        #     )
-                        # else:
-                        #     save_val_img(
-                        #         batch_idx=i,
-                        #         epoch_idx=epoch,
-                        #         prediction=vout[0], 
-                        #         ground_truth=Y[0], 
-                        #         gt_path=f'{self.data_dir}{output_dir}GT_Epoch{epoch}_{i}_{filename}.png',
-                        #         pred_path=f'{self.data_dir}{output_dir}Pred_Epoch{epoch}_{i}_{filename}.png'
-                        #     )
-
                         vloss = self.loss_fn(vout, Y)
                         running_vloss += vloss
                 avg_vloss = running_vloss / (i+1)
@@ -278,7 +253,6 @@ class MicronucleiModel():
                 wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
             else:
                 wandb.log({"Train_loss":avg_loss})
-            
             epoch_number += 1
 
         C = time.time() - start
@@ -343,8 +317,10 @@ class MicronucleiModel():
         
         
     def save(self, outdir="models/"):
-        # output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
-        output_file = f'{self.data_dir}{outdir}best_model.pth'
+        if self.need_validation_set: # LOO
+            output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
+        else: # train with all images
+            output_file = f'{self.data_dir}{outdir}best_model.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
@@ -359,7 +335,7 @@ class MicronucleiModel():
         classes = self.model.classifier.out_channels
         probabilities = np.zeros((classes, image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
-        TOKENS_PER_PATCH = self.patch_size // stride
+        TOKENS_PER_PATCH = self.patch_size // stride # 256, same as self.patch_size
         ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
         batch, coords = [], []
 
@@ -370,7 +346,7 @@ class MicronucleiModel():
             # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
             output = self.model(B.to(self.device))
             
-            output = torch.nn.functional.interpolate(output, (256,256))
+            output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_sizes))
             
             output = output > self.threshold
             

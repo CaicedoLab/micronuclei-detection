@@ -28,8 +28,6 @@ os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 torch.set_num_threads(8) # set only 8 cpus, the same number as requested
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 SCALE_FACTOR = 1.0
 PATCH_SIZE = 256
 STRIDE = 8
