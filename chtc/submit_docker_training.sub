@@ -1,17 +1,17 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.5
+docker_image = yasuo0810/dinov2_chtc:v0.6
 
 # set the executable to run
 executable = ./run_training.sh
 # set the log, error and output files
-log = log/log$(Cluster).log
-error = error/job$(Cluster).err
-output = output/job$(Cluster).out
+log = log/log_$(Cluster).log
+error = error/job_$(Cluster).err
+output = output/job_$(Cluster).out
 
 transfer_input_files = microdet.tar.gz
-transfer_output_files = microdet/dataset_v2/model_output, microdet/train_output.txt
+transfer_output_files = microdet/scale_aligned_dataset_v2_v3/model_output, microdet/train_output.txt
 
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
@@ -23,7 +23,7 @@ request_gpus = 1
 +GPUJobLength = "medium"
 
 request_memory = 40GB
-request_disk = 80GB
+request_disk = 60GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
 

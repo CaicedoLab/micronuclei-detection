@@ -36,15 +36,28 @@ def read_image(directory, imid, suffix, scale=1.0):
 
 
 # READ MICRONUCLEI ANNOTATIONS
-def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
+def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0, annotation_type='edge'):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
     img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
     
+    if len(img.shape) > 2: # mnfinder data only
+            img = np.mean(img, axis=0) # mnfinder test image are of size (2,H,W)
+    
     # Transform annotations to labels
-    otl = otl[:,:,0] > 0 # Use only the red channel
-    mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
-    labels = skimage.measure.label(mask)
-    labels = skimage.morphology.dilation(labels) #recover object edge
+    if annotation_type == 'filled': # mnfinder only
+        otl = np.mean(otl, axis=2) > 0 
+        labels = skimage.measure.label(otl)
+    elif annotation_type == 'edge': # Our dataset
+        otl = otl[:,:,0] > 0 # Use only the red channel
+        mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
+        labels = skimage.measure.label(mask)
+        labels = skimage.morphology.dilation(labels) #recover object edge
+    else:
+        assert False, 'Incorrect annotation type'
+    # otl = otl[:,:,0] > 0 # Use only the red channel
+    # mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
+    # labels = skimage.measure.label(mask)
+    # labels = skimage.morphology.dilation(labels) #recover object edge
 
     data = []
     for i in range(1,len(np.unique(labels))):
@@ -60,8 +73,18 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
 
-def read_micronuclei_masks(directory, imid, scale_factor=1.0):
+def read_micronuclei_masks(directory, imid, scale_factor=1.0, annotation_type='edge'):
     otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
+    if annotation_type == 'filled':
+        mask = np.mean(otl, axis=2) > 0
+    elif annotation_type == 'edge':
+        edge = otl[:,:,0] > 0 # Use only the red channel
+        mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
+        mask = mask + edge
+    else:
+        assert False, 'Incorrect annotation type'
+        
+    return mask
     edge = otl[:,:,0] > 0 # Use only the red channel
     mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
     return mask + edge
@@ -100,7 +123,7 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None):
+    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, annotation_type='edge', gaussian=False):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
@@ -109,6 +132,7 @@ class MicronucleiDataset(Dataset):
         self.edges = edges
         self.transform = transform
         self.shuffled = 0
+        self.gaussian = gaussian
         
         # Load images and annotations
         all_locs = []
@@ -118,23 +142,13 @@ class MicronucleiDataset(Dataset):
             im = read_image(directory, imid, 'phenotype.tif', scale_factor)
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
             #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
-            mni = read_micronuclei_annotations(directory, imid)
-            mnm = read_micronuclei_masks(directory, imid)
+            mni = read_micronuclei_annotations(directory, imid, annotation_type=annotation_type)
+            mnm = read_micronuclei_masks(directory, imid, annotation_type=annotation_type)
             nuc = read_nuclei_masks(directory, imid)
             all_locs.append(mni)
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             
         self.all_locs = pd.concat(all_locs)
-        
-        # Validate image sizes
-        S = np.asarray([self.images[imid]["image"].shape for imid in self.images.keys()])
-        assert np.all(S[:,0] == S[0,0]) and np.all(S[:,1] == S[0,1])
-        self.H, self.W = S[0,0], S[0,1]
-        
-        # Remove excess pixels (alternatively, rescale the images to fit the desired size?)
-        self.margin = self.W%self.patch_size
-        self.W = self.W - self.margin
-        self.H = self.H - self.margin
         
         # Prepare data locations
         if self.mode == "random":
@@ -151,12 +165,15 @@ class MicronucleiDataset(Dataset):
         #print("Randomized",self.shuffled,"times")
         self.index = []
         PS = self.patch_size
-        patches_per_image = (self.W // self.patch_size) * (self.H // self.patch_size)
+        
         
         for imid in self.images:
             # Generate random patch coordinates C
-            X = np.random.randint(0, self.W - PS, patches_per_image)
-            Y = np.random.randint(0, self.H - PS, patches_per_image)
+            H, W = self.images[imid]["image"].shape
+            patches_per_image = (W // PS) * (H // PS)
+            # print(f'{imid}: height - {H}, width - {W}, patches - {patches_per_image}')
+            X = np.random.randint(0, W - PS, patches_per_image)
+            Y = np.random.randint(0, H - PS, patches_per_image)
             C = np.stack((Y,X)).T
             A = {}
 
@@ -173,7 +190,7 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                elif (r.y + PS < self.H and r.x + PS < self.W):
+                elif (r.y + PS < H and r.x + PS < W):
                     # If not covered, add a new patch that covers the location
                     extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
                     C = np.append(C, extra, axis=0)
@@ -198,12 +215,14 @@ class MicronucleiDataset(Dataset):
     def index_patches(self):
         self.index = []
         PS = self.patch_size
-        patches_per_image = (self.W // self.patch_size) * (self.H // self.patch_size)
         
         for imid in self.images:
             # Generate regular grid of patch coordinates C
-            X = np.linspace(0, self.W - self.W % self.patch_size, self.W // self.patch_size + 1)
-            Y = np.linspace(0, self.H - self.H % self.patch_size, self.H // self.patch_size + 1)
+            H, W = self.images[imid]["image"].shape
+            patches_per_image = (W // PS) * (H // PS)
+            # print(f'{imid}: height - {H}, width - {W}, patches - {patches_per_image}')
+            X = np.linspace(0, W - W % PS, W // PS + 1)
+            Y = np.linspace(0, H - H % PS, H // PS + 1)
             X,Y = np.meshgrid(X[:-1],Y[:-1], indexing='ij')
             X = X.reshape((patches_per_image,))
             Y = Y.reshape((patches_per_image,))
@@ -243,25 +262,13 @@ class MicronucleiDataset(Dataset):
     def __getitem__(self, idx):
         item = self.index[idx]
         
-        # Crop patches out of the full image
-        if False: # original code
-            PS = self.patch_size
+        if self.gaussian: # default: False
+            height, width = np.random.normal(loc=self.patch_size, scale=20, size=2) # 20 is the best so far
+            height, width = int(height), int(width)
             r,c = int(item["coord"][0]), int(item["coord"][1])
-            crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
-            mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
-            n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
-            crop = patch_to_rgb(crop, self.edges)
-            mask = torch.Tensor(np.concatenate(
-                (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
-            ))
-        
-        if True: # new code with sampling from gaussian distribution
-            PS_height, PS_width = np.random.normal(loc=256, scale=5, size=2)
-            PS_height, PS_width = int(PS_height), int(PS_width)
-            r,c = int(item["coord"][0]), int(item["coord"][1])
-            crop = self.images[item["Image"]]["image"][r:r+PS_height,c:c+PS_width]
-            mn_mask = self.images[item["Image"]]["micro"][r:r+PS_height,c:c+PS_width]
-            n_mask = self.images[item["Image"]]["nuclei"][r:r+PS_height,c:c+PS_width]
+            crop = self.images[item["Image"]]["image"][r:r+height,c:c+width]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+height,c:c+width]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+height,c:c+width]
             
             crop = patch_to_rgb(crop, self.edges)
             mask = torch.Tensor(np.concatenate(
@@ -275,21 +282,20 @@ class MicronucleiDataset(Dataset):
 
             crop = crop.squeeze(0)
             mask = mask.squeeze(0)
-            
-        # Move labels to a local reference frame
-        #labels = [(min((p[0] - y)//8,31) ,min((p[1] - x)//8,31)) for p in item["locs"]]
-        #grid = np.zeros((32,32))
-        #for c in labels:
-        #    grid[c[0],c[1]] = 1.0
         
-        # Apply augmentations
-        # if self.mode == "random" and self.transform is not None:
-        if self.mode in ["random", "gaussian"] and self.transform is not None:
-            #grid = patch_to_rgb(grid, edges=False)
-            #crop, grid = self.transform(crop, grid)
-            #grid = grid[0,:,:]
-            
-            # mask = patch_to_rgb(mask, edges=False)
+        # Crop patches out of the full image
+        else: # original code
+            PS = self.patch_size
+            r,c = int(item["coord"][0]), int(item["coord"][1])
+            crop = self.images[item["Image"]]["image"][r:r+PS,c:c+PS]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+PS,c:c+PS]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+PS,c:c+PS]
+            crop = patch_to_rgb(crop, self.edges)
+            mask = torch.Tensor(np.concatenate(
+                (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
+            ))
+        
+        if self.mode in ["random"] and self.transform is not None:
             crop, mask = self.transform(crop, mask)
             # mask = mask[0,:,:]
             

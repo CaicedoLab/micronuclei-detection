@@ -1,17 +1,19 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.5
+docker_image = yasuo0810/dinov2_chtc:v0.6
 
 # set the executable to run
 executable = ./run_prediction.sh
+arguments = -i $(Process)
+
 # set the log, error and output files
-log = log/log$(Cluster).log
-error = error/job$(Cluster).err
-output = output/job$(Cluster).out
+log = log/log$(Cluster)_$(Process).log
+error = error/job$(Cluster)_$(Process).err
+output = output/job$(Cluster)_$(Process).out
 
 transfer_input_files = microdet.tar.gz
-transfer_output_files = microdet/dataset_v2/model_output, microdet/prediction_output.txt
+transfer_output_files = microdet/20X_c0_HeLa/model_output
 
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
@@ -22,9 +24,9 @@ request_gpus = 1
 +WantGPULab = true
 +GPUJobLength = "medium"
 
-request_memory = 40GB
+request_memory = 80GB
 request_disk = 80GB
 
 Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
 
-queue
+queue 1596

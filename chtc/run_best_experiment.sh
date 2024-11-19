@@ -4,18 +4,16 @@ tar -xvf microdet.tar.gz
 rm microdet.tar.gz
 cd microdet
 
+gpu=0
 
 usage() {
-    echo "Usage: $0 [-t tile_id] [-i image_id]"
+    echo "Usage: $0 [-i imidx]"
     exit 1
 }
 
 # Parse command line options.
-while getopts ":t:i:" opt; do
+while getopts ":i:" opt; do
     case ${opt} in
-        t )
-            tile_id=$OPTARG
-            ;;
         i )
             imidx=$OPTARG
             ;;
@@ -23,6 +21,7 @@ while getopts ":t:i:" opt; do
 done
 shift $((OPTIND -1))
 
-output_file="best_experiment_$tile_id.txt"
-python3 run_best_experiment.py $imidx > "$output_file"
-cp "$output_file" best_experiment/
+mkdir predictions
+output_file="prediction_$imidx.txt"
+python3 run_best_experiment.py $imidx $gpu > $output_file
+cp $output_file predictions/

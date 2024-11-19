@@ -106,6 +106,7 @@ def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, report_ob
     if IoUs.size == 0:
         prec = 0.0
         rec = 0.0
+        # print(f'----- Segmentation Report for {report_obj} -----')
         print(f'{imid},{prec},{rec}')
         wandb.log({'Precision':prec, 'Recall':rec})
     else:

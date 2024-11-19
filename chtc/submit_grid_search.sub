@@ -1,14 +1,14 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.5
+docker_image = yasuo0810/dinov2_chtc:v0.6
 
 # set the executable to run
 executable = ./grid_search.sh
-arguments = -i $(ProcID) -l $(loss_fn) -r $(learning_rate) -b $(batch_size) -f $(finetune)
-log = log/log$(ProcID).log
-error = error/job$(ProcID).err
-output = output/job$(ProcID).out
+arguments = -i $(Process) -l $(loss_fn) -r $(learning_rate) -b $(batch_size) -f $(finetune)
+log = log/log$(Process).log
+error = error/job$(Process).err
+output = output/job$(Process).out
 
 transfer_input_files = microdet.tar.gz
 transfer_output_files = microdet/config_output

@@ -80,8 +80,8 @@ class FocalLoss(torch.nn.Module):
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        p = torch.sigmoid(inputs)
         ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
+        p = torch.sigmoid(inputs)
         p_t = p * targets + (1 - p) * (1 - targets)
         loss = ce_loss * ((1 - p_t) ** self.gamma)
 
@@ -117,12 +117,13 @@ class CombinedFocalDiceLoss(torch.nn.Module):
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0):
+    def __init__(self, data_dir, device, annotation_type, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
         self.patch_size = patch_size
         self.threshold = 0.0
+        self.gaussian = gaussian
         
         if len(training_files) > 0:
             self.training_set = mnds.MicronucleiDataset(
@@ -132,7 +133,9 @@ class MicronucleiModel():
                 edges=edges,
                 transform=mnds.detection_transforms,
                 scale_factor=scale_factor,
-                patch_size=patch_size
+                patch_size=patch_size,
+                gaussian=gaussian,
+                annotation_type=annotation_type
             )
         
         if len(validation_files) > 0:
@@ -142,7 +145,9 @@ class MicronucleiModel():
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,
-                patch_size=patch_size
+                patch_size=patch_size,
+                gaussian=gaussian,
+                annotation_type=annotation_type
             )
             self.need_validation_set = True
         else:
@@ -156,7 +161,7 @@ class MicronucleiModel():
             self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
         self.model = detection.DetectionModel(device=self.device, finetune=finetune)
-        
+    
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
         if loss_fn == 'dice':
             self.loss_fn = DiceLoss(alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean')
@@ -168,11 +173,11 @@ class MicronucleiModel():
             
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9) # add weight decy / regularization
         
-        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        #     optimizer=self.optimizer,
-        #     T_max=2,
-        #     eta_min=learning_rate * 0.1
-        # )
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=self.optimizer,
+            T_max=20, # max number of training epochs,
+            eta_min=learning_rate * 0.1
+        )
         
         
     def train_one_epoch(self, epoch_index, tb_writer):
@@ -187,7 +192,7 @@ class MicronucleiModel():
             p = self.model(x.to(self.device))
 
             # output resolution: 128
-            p = torch.nn.functional.interpolate(p, (256,256))
+            p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
             
             # Loss function   
             Y = y.to(self.device).float()
@@ -200,22 +205,15 @@ class MicronucleiModel():
             # Training instructions
             loss.backward()
             
+            # Update weights
             self.optimizer.step()
-
+            
             # Report results
             running_loss += loss.item()
         return running_loss / i
     
     
-    def train(self, epochs, batch_size, learning_rate, loss_fn, output_dir, finetune=False, weight_decay=1e-6):
-        def save_val_img(batch_idx, epoch_idx, prediction, ground_truth, pred_path, gt_path):
-            prediction = prediction > self.threshold
-            prediction = prediction.float()
-            
-            if (batch_idx % 10 == 0) and (epoch_idx==19):     
-                torchvision.utils.save_image(prediction, pred_path) 
-                torchvision.utils.save_image(ground_truth, gt_path)
-        
+    def train(self, epochs, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
         self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune, weight_decay=weight_decay)
         
         best_vloss = 1_000_000.
@@ -229,6 +227,10 @@ class MicronucleiModel():
             self.model.train(True)
             avg_loss = self.train_one_epoch(epoch_number, None)
             
+            # Update learning rate per epoch
+            wandb.log({'current_lr':self.optimizer.param_groups[0]['lr']})
+            self.scheduler.step()
+            
 
             # Validation
             if self.need_validation_set:
@@ -239,7 +241,7 @@ class MicronucleiModel():
                         vin, vls = vdata
                         vout = self.model(vin.to(self.device))
                         # output resolution: 128
-                        vout = torch.nn.functional.interpolate(vout, (256,256))
+                        vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
                         Y = vls.to(self.device).float()
                         
                         vloss = self.loss_fn(vout, Y)
@@ -275,7 +277,7 @@ class MicronucleiModel():
                 vin, vls = vdata
                 output = self.model(vin.to(self.device))
                 
-                output = torch.nn.functional.interpolate(output, (256,256))
+                output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
                 
                 mn_output = output[:,0,:,:] > self.threshold # micronuclei
                 mn_pred0 = mn_output.float()
@@ -319,8 +321,10 @@ class MicronucleiModel():
     def save(self, outdir="models/"):
         if self.need_validation_set: # LOO
             output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
+        # elif self.gaussian:
+        #     output_file = f'{self.data_dir}{outdir}best_model_gaussian.pth'
         else: # train with all images
-            output_file = f'{self.data_dir}{outdir}best_model.pth'
+            output_file = f'{self.data_dir}{outdir}best_model_v2_1.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
@@ -331,7 +335,7 @@ class MicronucleiModel():
         self.model.to(self.device)
         
         
-    def predict(self, image, stride=1, step=16, batch_size=512):
+    def predict(self, image, stride=1, step=16, batch_size=512, dilation=0):
         classes = self.model.classifier.out_channels
         probabilities = np.zeros((classes, image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
@@ -346,14 +350,22 @@ class MicronucleiModel():
             # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
             output = self.model(B.to(self.device))
             
-            output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_sizes))
+            output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
             
             output = output > self.threshold
             
             pred0 = output.float()
             P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
             P = P.cpu().numpy()
-
+            # print(f'P shape in batch_predict(): {P.shape}')
+            
+            # Postprocessing - only dilate the micronuclei channel
+            if dilation != 0:
+                dilated_P = np.zeros_like(P)
+                for i in range(0, dilated_P.shape[0]): # iterate all batches
+                    dilated_P[i,0,:,:] = skimage.morphology.dilation(P[i,0,:,:], footprint=skimage.morphology.disk(dilation))
+                P[:,0,:,:] = dilated_P[:,0,:,:] # replace micronuclei channel with dilated one
+            
             for c in range(len(coords)):
                 y = coords[c]["a"]
                 x = coords[c]["b"]

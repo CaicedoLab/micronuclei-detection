@@ -16,7 +16,7 @@ import wandb
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/dataset_v2'
+DIRECTORY = CURRENT_PATH + '/scale_aligned_dataset_v2_v3'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -32,7 +32,7 @@ if len(sys.argv) < 2:
 gpu = sys.argv[1]
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
-SCALE_FACTOR = 1.0
+# Fixed Hyperparameters
 PATCH_SIZE = 256
 STRIDE = 8
 FEATURE_SIZE = 384
@@ -40,13 +40,20 @@ TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 EPOCHS = 20
 THRESHOLD = 0.5
-ANNOTATION_TYPE = 'edge' # train on our own data
 
 LOSS_FN = 'combined'
 LR = 1e-5
 BATCH_SIZE = 32
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
+
+# Tunable Hyperparameters
+# How do deal with different scale factor for training? (scale v3 first)
+SCALE_FACTOR = 1.0
+GAUSSIAN = True
+ANNOTATION_TYPE = 'edge' # train on our own data
+# ANNOTATION_TYPE = 'filled' # train on mnfinder data
+ARCHITECTURE = "Train all 24: model version: 2_1"
 
 # Train
 files = os.listdir(DIRECTORY)
@@ -64,30 +71,34 @@ wandb.login(key=key)
 wandb.init(
     project='Best_Experiment',
     config={
-        "architecture":"best model: train all 18 images",
+        "architecture":ARCHITECTURE,
         "Loss": LOSS_FN,
         "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,
         "batch_size":BATCH_SIZE,
         "learning_rate":LR,
+        "scale_factor":SCALE_FACTOR,
+        "train_annotation":ANNOTATION_TYPE,
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
         "patch_size":PATCH_SIZE,
         "weight_decay":WEIGHT_DECAY,
         "probability_threshold":THRESHOLD
     },
-    name=f'train_18images'
+    name=f'train_all_24_images'
 )
 
 # Create model
 model = mnmodel.MicronucleiModel(
     DIRECTORY, 
     device, 
+    annotation_type=ANNOTATION_TYPE,
     training_files=training_files, 
-    validation_files=[], # input empty list when train with all 18 images of the best model
+    validation_files=[], # input empty list when train with all images
     patch_size=PATCH_SIZE,
     scale_factor=SCALE_FACTOR,
-    edges=True
+    edges=True,
+    gaussian=GAUSSIAN
 )
 
 # Train
@@ -95,10 +106,12 @@ model.train(epochs=EPOCHS,
             batch_size=BATCH_SIZE, 
             learning_rate=LR, 
             loss_fn=LOSS_FN, 
-            output_dir=OUTPUT_DIR, 
             finetune=FINETUNE,
             weight_decay=WEIGHT_DECAY
 )
+
+# Validate
+# model.validate()
 
 # Save
 model.save(outdir=OUTPUT_DIR)
