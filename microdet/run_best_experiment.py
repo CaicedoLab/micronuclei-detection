@@ -29,15 +29,14 @@ FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters
-SCALE_FACTOR = 1.0
+SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
-ANNOTATION_TYPE = 'edge' # train on our own data
-ARCHITECTURE = "2nd Explore stabalization with LR scheduler"
+ARCHITECTURE = "3rd Explore stabalization with LR scheduler"
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/scale_aligned_dataset_v2_v3'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -56,12 +55,11 @@ i = int(sys.argv[1])
 gpu = int(sys.argv[2])
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
-# os.makedirs('best_experiment')
 
 # Train
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
-annot_files = [x for x in filelist if x.endswith('png')]
+annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
 annot_files.sort()
 # annot_files = annot_files[0:10] # using all 18 images
 
@@ -89,8 +87,6 @@ if True:
             "start_learning_rate":LR,
             "lr_scheduler":"Cosine",
             "scale_factor":SCALE_FACTOR,
-            "train_annotation":ANNOTATION_TYPE,
-            "test_annotation":ANNOTATION_TYPE,
             "epochs": EPOCHS,
             "feature_size":FEATURE_SIZE,
             "patch_size":PATCH_SIZE,
@@ -99,14 +95,14 @@ if True:
             "dilation":DILATION,
             "gaussian":GAUSSIAN
         },
-        name=f'{image_id}'
+        name=f'{image_id}',
+        reinit=True
     )
 
     # Create model
     model = mnmodel.MicronucleiModel(
         DIRECTORY, 
         device, 
-        annotation_type=ANNOTATION_TYPE,
         training_files=training_files, 
         validation_files=validation_files, 
         patch_size=PATCH_SIZE,
@@ -129,25 +125,27 @@ if True:
 
 
     # Validate
-    predictions_dir = DIRECTORY + OUTPUT_DIR
+    # predictions_dir = DIRECTORY + OUTPUT_DIR
+    predictions_dir = '/scr/yren/all_data_micronuclei/validation'
     models_dir = OUTPUT_DIR
 
     # Select image for analysis
+    # do os list_dir....
     validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
 
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
+    mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+
 
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(
         DIRECTORY, 
         device, 
-        annotation_type=ANNOTATION_TYPE,
         patch_size=PATCH_SIZE, 
-        edges=True, 
+        edges=True,
         gaussian=False # predict() function has nothing to do with gaussian sampling
     )
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)

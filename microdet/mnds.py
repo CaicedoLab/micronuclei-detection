@@ -36,29 +36,11 @@ def read_image(directory, imid, suffix, scale=1.0):
 
 
 # READ MICRONUCLEI ANNOTATIONS
-def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0, annotation_type='edge'):
-    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
+def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
+    mask = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
     img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
     
-    if len(img.shape) > 2: # mnfinder data only
-            img = np.mean(img, axis=0) # mnfinder test image are of size (2,H,W)
-    
-    # Transform annotations to labels
-    if annotation_type == 'filled': # mnfinder only
-        otl = np.mean(otl, axis=2) > 0 
-        labels = skimage.measure.label(otl)
-    elif annotation_type == 'edge': # Our dataset
-        otl = otl[:,:,0] > 0 # Use only the red channel
-        mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
-        labels = skimage.measure.label(mask)
-        labels = skimage.morphology.dilation(labels) #recover object edge
-    else:
-        assert False, 'Incorrect annotation type'
-    # otl = otl[:,:,0] > 0 # Use only the red channel
-    # mask = scipy.ndimage.binary_fill_holes(otl) ^ otl
-    # labels = skimage.measure.label(mask)
-    # labels = skimage.morphology.dilation(labels) #recover object edge
-
+    labels = skimage.measure.label(mask)
     data = []
     for i in range(1,len(np.unique(labels))):
         ys,xs = np.where(labels == i)
@@ -73,21 +55,6 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
     mni = pd.DataFrame(data=data, columns=["Image","x","y","area","intensity"])
     return mni #, labels
 
-def read_micronuclei_masks(directory, imid, scale_factor=1.0, annotation_type='edge'):
-    otl = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
-    if annotation_type == 'filled':
-        mask = np.mean(otl, axis=2) > 0
-    elif annotation_type == 'edge':
-        edge = otl[:,:,0] > 0 # Use only the red channel
-        mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
-        mask = mask + edge
-    else:
-        assert False, 'Incorrect annotation type'
-        
-    return mask
-    edge = otl[:,:,0] > 0 # Use only the red channel
-    mask = scipy.ndimage.binary_fill_holes(edge) ^ edge
-    return mask + edge
 
 def read_nuclei_masks(directory, imid, scale_factor=1.0):
     # otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
@@ -123,7 +90,7 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, annotation_type='edge', gaussian=False):
+    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, gaussian=False):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
@@ -142,8 +109,8 @@ class MicronucleiDataset(Dataset):
             im = read_image(directory, imid, 'phenotype.tif', scale_factor)
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
             #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
-            mni = read_micronuclei_annotations(directory, imid, annotation_type=annotation_type)
-            mnm = read_micronuclei_masks(directory, imid, annotation_type=annotation_type)
+            mni = read_micronuclei_annotations(directory, imid)
+            mnm = read_image(directory, imid, 'phenotype_outlines.png', scale_factor)
             nuc = read_nuclei_masks(directory, imid)
             all_locs.append(mni)
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}

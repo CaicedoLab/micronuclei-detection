@@ -117,12 +117,11 @@ class CombinedFocalDiceLoss(torch.nn.Module):
 
 class MicronucleiModel():
     
-    def __init__(self, data_dir, device, annotation_type, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
+    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
         self.patch_size = patch_size
-        self.threshold = 0.0
         self.gaussian = gaussian
         
         if len(training_files) > 0:
@@ -134,8 +133,7 @@ class MicronucleiModel():
                 transform=mnds.detection_transforms,
                 scale_factor=scale_factor,
                 patch_size=patch_size,
-                gaussian=gaussian,
-                annotation_type=annotation_type
+                gaussian=gaussian
             )
         
         if len(validation_files) > 0:
@@ -146,8 +144,7 @@ class MicronucleiModel():
                 edges=edges,
                 scale_factor=scale_factor,
                 patch_size=patch_size,
-                gaussian=gaussian,
-                annotation_type=annotation_type
+                gaussian=gaussian
             )
             self.need_validation_set = True
         else:
@@ -180,7 +177,7 @@ class MicronucleiModel():
         )
         
         
-    def train_one_epoch(self, epoch_index, tb_writer):
+    def train_one_epoch(self):
         running_loss = 0.
         last_loss = 0.
 
@@ -217,7 +214,6 @@ class MicronucleiModel():
         self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune, weight_decay=weight_decay)
         
         best_vloss = 1_000_000.
-        epoch_number = 0
 
         start = time.time()
         for epoch in range(epochs):
@@ -225,7 +221,7 @@ class MicronucleiModel():
             # print(f'EPOCH {epoch} - ', end='') # comment only for grid search purpose
             T = time.time()
             self.model.train(True)
-            avg_loss = self.train_one_epoch(epoch_number, None)
+            avg_loss = self.train_one_epoch()
             
             # Update learning rate per epoch
             wandb.log({'current_lr':self.optimizer.param_groups[0]['lr']})
@@ -255,76 +251,19 @@ class MicronucleiModel():
                 wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
             else:
                 wandb.log({"Train_loss":avg_loss})
-            epoch_number += 1
 
         C = time.time() - start
         # print(f"\nTrainined finished in {C:.2f} seconds") # comment out for grid search
         wandb.log({"Train time":C})
-        
-    def validate(self):
-        self.model.eval()
 
-        mn_GT = []
-        mn_PRED = []
-        n_GT = []
-        n_PRED = []
-
-        ### make seperate report for micronuclei and nuclei, N*C*H*W, C = 0 is micronuclei, 1 is nuclei ###
-        
-        with torch.no_grad():
-            for i, vdata in enumerate(self.val_dataloader):
-                # Get predictions
-                vin, vls = vdata
-                output = self.model(vin.to(self.device))
-                
-                output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
-                
-                mn_output = output[:,0,:,:] > self.threshold # micronuclei
-                mn_pred0 = mn_output.float()
-                n_output = output[:,1,:,:] > self.threshold
-                n_pred0 = n_output.float()
-                # pred0 = F.softmax(output, dim=1)
-                
-                mn_P = torch.reshape(mn_pred0, (-1, self.patch_size, self.patch_size))
-                mn_pred = mn_P.cpu().numpy()
-                n_P = torch.reshape(n_pred0, (-1, self.patch_size, self.patch_size))
-                n_pred = n_P.cpu().numpy()
-             
-                # Collect predictions and ground truth
-                # Micronuclei
-                mn_PRED.append(mn_pred)
-                mn_GT.append(vls[:,0,:,:].cpu().numpy())
-                # Nuclei
-                n_PRED.append(n_pred)
-                n_GT.append(vls[:,1,:,:].cpu().numpy())
-        
-        mn_PRED = np.concatenate(mn_PRED, axis=0).reshape((-1,))
-        mn_GT = np.concatenate(mn_GT, axis=0).reshape((-1,))
-        n_PRED = np.concatenate(n_PRED, axis=0).reshape((-1,))
-        n_GT = np.concatenate(n_GT, axis=0).reshape((-1,))
-        
-        mn_report = sklearn.metrics.classification_report(mn_GT, mn_PRED)
-        print('----- Micronuclei Classification Report ------')
-        print(mn_report)
-        
-        n_report = sklearn.metrics.classification_report(n_GT, n_PRED)
-        print('----- Nuclei Classification Report ------')
-        print(n_report)
-        
-        mn_jaccard_score = sklearn.metrics.jaccard_score(mn_GT, mn_PRED, average='weighted')
-        print(f'Micronuclei Jaccard Score: {mn_jaccard_score:.4f} \n')
-        
-        n_jaccard_score = sklearn.metrics.jaccard_score(n_GT, n_PRED, average='weighted')
-        print(f'Nuclei Jaccard Score: {n_jaccard_score:.4f} \n')
-        
         
     def save(self, outdir="models/"):
-        if self.need_validation_set: # LOO
-            output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
-        # elif self.gaussian:
-        #     output_file = f'{self.data_dir}{outdir}best_model_gaussian.pth'
-        else: # train with all images
-            output_file = f'{self.data_dir}{outdir}best_model_v2_1.pth'
+        # if self.need_validation_set: # LOO
+        #     output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
+        # # elif self.gaussian:
+        # #     output_file = f'{self.data_dir}{outdir}best_model_gaussian.pth'
+        # else: # train with all images
+        output_file = f'{self.data_dir}{outdir}best_model_v3.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
@@ -352,7 +291,9 @@ class MicronucleiModel():
             
             output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
             
-            output = output > self.threshold
+            # the output is not probability here (weights instead), last layer of detection model is binary classification, so we transform output to binary values.
+            # classify pixel-wisely to 0 or 1, and scan all over the input image, and then average them, it is probability at the end.
+            output = output > 0.0
             
             pred0 = output.float()
             P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))

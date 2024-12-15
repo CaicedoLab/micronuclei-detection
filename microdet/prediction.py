@@ -7,6 +7,7 @@
 import os
 import sys
 import time
+import skimage.morphology
 import torch
 import skimage
 import sklearn.metrics
@@ -21,7 +22,7 @@ import mnmodel
 import evaluation
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/20X_c0_HeLa'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/validation'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -45,26 +46,23 @@ FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
-SCALE_FACTOR = 1.07
-TEST_ANNOTATION_TYPE = 'edge' # for our data
-# ANNOTATION_TYPE = 'filled' # for mnfinder data
-ARCHITECTURE = "model version 2.1: evaluate on new HeLa images - 20241114 pilot validation"
-DILATION = 0 # 2 might be the best, only used in prediction
+SCALE_FACTOR = 1 # All images have been pre-scaled
+DILATION = 2 # the best, only used in prediction
+ARCHITECTURE = "model version 3: evaluate on validation set"
 
-if len(sys.argv) < 3:
-    print("Use: prediction.py imidx gpu")
+if len(sys.argv) < 2:
+    print("Use: prediction.py gpu")
     sys.exit()
 
 
-i = int(sys.argv[1])
-gpu = sys.argv[2] # which gpu
+# i = int(sys.argv[1])
+gpu = sys.argv[1] # which gpu
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
 # avoid files starting with . when untarring in CHTC
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')]
-# annot_files = [x for x in filelist if x.endswith('png')]
-annot_files = [x for x in filelist if x.endswith('tif')] # no ground truth
+annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
 annot_files.sort()
 
 # Validate
@@ -73,26 +71,28 @@ models_dir = OUTPUT_DIR
 
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
-    DIRECTORY, 
+    CURRENT_PATH + '/all_data_micronuclei/train',
     device, 
     patch_size=PATCH_SIZE, 
-    annotation_type=TEST_ANNOTATION_TYPE,
     edges=True, 
     gaussian=False # not needed in predict() function
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('best_model_v2_1.pth', model_dir=models_dir)
+model.load('best_model_v3.pth', model_dir=models_dir)
 
-# for i in tqdm(range(len(annot_files))):
-if True:
+
+# Log in WanDB
+key_file = open('./wandb_key.txt', 'r')
+key = key_file.readline()
+wandb.login(key=key)
+
+
+for i in tqdm(range(len(annot_files))):
+# if True:
     # Select image for analysis
     validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
     
-    
-    key_file = open('./wandb_key.txt', 'r')
-    key = key_file.readline()
-    wandb.login(key=key)
     wandb.init(
         project='Best_Experiment',
         config={
@@ -102,8 +102,7 @@ if True:
             "fine_tuning":FINETUNE,
             "batch_size":BATCH_SIZE,
             "learning_rate":LR,
-            "scale_factor":SCALE_FACTOR,
-            # "test_annotation":TEST_ANNOTATION_TYPE,
+            "scale_factor":'1.0, all images have been prescaled',
             "epochs": EPOCHS,
             "feature_size":FEATURE_SIZE,
             "patch_size":PATCH_SIZE,
@@ -112,28 +111,26 @@ if True:
             "dilation":DILATION,
             "gaussian":'gaussian not need for prediction'
         },
-        name=f'{imid}'
+        name=f'{imid}',
+        reinit=True
     )
     
     # Load image and annotations
-    filename_suffix = 'phenotype_HeLa.tif'
-    im = mnds.read_image(DIRECTORY, imid, filename_suffix, scale=SCALE_FACTOR)
-    
-    if filename_suffix == 'phenotype_HeLa.tif': # add if the last channel == 3 !!!!!!!!!!!
-        # 3 channel-iamge, concatenate
-        im = np.mean(im, axis=2)
+    im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
         
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    # mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR, annotation_type=TEST_ANNOTATION_TYPE)
-    
+    mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
     # filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    filename = predictions_dir + validation_file.replace(filename_suffix,'_probabilities') # no ground truth
+    filename = predictions_dir + validation_file.replace('phenotype.tif','_probabilities') # no ground truth case
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
-    # evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
-    np.save(filename, mn_pred)
+    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
     
-    # release the resources
-    torch.cuda.empty_cache()
+    # save labeled matrices
+    labeled_mn = skimage.morphology.label(mn_pred)
+    np.save(filename, labeled_mn)
+    
+# release the resources
+torch.cuda.empty_cache()

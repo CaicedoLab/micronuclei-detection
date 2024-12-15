@@ -12,8 +12,9 @@ log = log/log$(Cluster)_$(Process).log
 error = error/job$(Cluster)_$(Process).err
 output = output/job$(Cluster)_$(Process).out
 
-transfer_input_files = microdet.tar.gz
-transfer_output_files = microdet/20X_c0_HeLa/model_output
+transfer_input_files = microdet.tar.gz, file:///staging/groups/caicedo_group/yren/micronuclei_project/20241114_pilot_validation_20X_c0_HeLa.tar.gz
+transfer_output_files = microdet/20241114_pilot_validation_20X_c0_HeLa/model_output
+transfer_output_remaps = "model_output = file:///staging/groups/caicedo_group/yren/micronuclei_project/model_output
 
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
@@ -27,6 +28,6 @@ request_gpus = 1
 request_memory = 80GB
 request_disk = 80GB
 
-Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
+Requirements = (Machine == "jcaicedogpu0001.chtc.wisc.edu")
 
 queue 1596

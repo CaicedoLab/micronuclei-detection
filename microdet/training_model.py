@@ -16,7 +16,7 @@ import wandb
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/scale_aligned_dataset_v2_v3'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -49,16 +49,14 @@ WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters
 # How do deal with different scale factor for training? (scale v3 first)
-SCALE_FACTOR = 1.0
+SCALE_FACTOR = 1.0 # All images have been pre-scaled
 GAUSSIAN = True
-ANNOTATION_TYPE = 'edge' # train on our own data
-# ANNOTATION_TYPE = 'filled' # train on mnfinder data
-ARCHITECTURE = "Train all 24: model version: 2_1"
+ARCHITECTURE = "Train 167 images: model version 3"
 
 # Train
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
-annot_files = [x for x in filelist if x.endswith('png')]
+annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
 annot_files.sort()
 # annot_files = annot_files[0:10] # using all 18 images
 
@@ -76,23 +74,23 @@ wandb.init(
         "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,
         "batch_size":BATCH_SIZE,
-        "learning_rate":LR,
-        "scale_factor":SCALE_FACTOR,
-        "train_annotation":ANNOTATION_TYPE,
+        "start_learning_rate":LR,
+        "lr_scheduler":"Cosine",
+        "scale_factor":'1.0, all images have been prescaled',
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
         "patch_size":PATCH_SIZE,
         "weight_decay":WEIGHT_DECAY,
-        "probability_threshold":THRESHOLD
+        "probability_threshold":THRESHOLD,
+        "gaussian":GAUSSIAN
     },
-    name=f'train_all_24_images'
+    name=f'train-val-test split experiment'
 )
 
 # Create model
 model = mnmodel.MicronucleiModel(
     DIRECTORY, 
     device, 
-    annotation_type=ANNOTATION_TYPE,
     training_files=training_files, 
     validation_files=[], # input empty list when train with all images
     patch_size=PATCH_SIZE,
@@ -110,8 +108,6 @@ model.train(epochs=EPOCHS,
             weight_decay=WEIGHT_DECAY
 )
 
-# Validate
-# model.validate()
 
 # Save
 model.save(outdir=OUTPUT_DIR)

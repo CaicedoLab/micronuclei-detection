@@ -25,6 +25,6 @@ request_gpus = 1
 request_memory = 40GB
 request_disk = 60GB
 
-Requirements = (Machine == "jcaicedogpu0000.chtc.wisc.edu" || Machine == "jcaicedogpu0001.chtc.wisc.edu")
+Requirements = (Machine == "jcaicedogpu0001.chtc.wisc.edu")
 
 queue
