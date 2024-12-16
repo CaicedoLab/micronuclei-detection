@@ -102,7 +102,7 @@ class MicronucleiDataset(Dataset):
         self.gaussian = gaussian
         
         # Load images and annotations
-        all_locs = []
+        # all_locs = []
         self.images = {}
         for fname in tqdm(filelist):
             imid = fname.split('.')[0]
@@ -112,10 +112,10 @@ class MicronucleiDataset(Dataset):
             mni = read_micronuclei_annotations(directory, imid)
             mnm = read_image(directory, imid, 'phenotype_outlines.png', scale_factor)
             nuc = read_nuclei_masks(directory, imid)
-            all_locs.append(mni)
+            # all_locs.append(mni)
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             
-        self.all_locs = pd.concat(all_locs)
+        # self.all_locs = pd.concat(all_locs)
         
         # Prepare data locations
         if self.mode == "random":
@@ -157,7 +157,8 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                elif (r.y + PS < H and r.x + PS < W):
+                # elif (r.y + PS < H and r.x + PS < W):
+                elif (r.y + PS < H or r.x + PS < W): # or statement might fit non-square images?
                     # If not covered, add a new patch that covers the location
                     extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
                     C = np.append(C, extra, axis=0)

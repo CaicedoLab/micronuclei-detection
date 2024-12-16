@@ -120,6 +120,7 @@ for i in tqdm(range(len(annot_files))):
         
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    mn_gt = mn_gt > 0 # convert to binary
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
     # filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
@@ -130,6 +131,7 @@ for i in tqdm(range(len(annot_files))):
     
     # save labeled matrices
     labeled_mn = skimage.morphology.label(mn_pred)
+    labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
     np.save(filename, labeled_mn)
     
 # release the resources
