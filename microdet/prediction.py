@@ -6,6 +6,7 @@
 
 import os
 import sys
+sys.path.append('../f')
 import time
 import skimage.morphology
 import torch
@@ -120,7 +121,7 @@ for i in tqdm(range(len(annot_files))):
         
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
-    mn_gt = mn_gt > 0 # convert to binary
+    mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
     # filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')

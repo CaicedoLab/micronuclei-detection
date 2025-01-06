@@ -16,8 +16,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
-import mnds
-import detection
+import sys
+import mnds as mnds
+import detection as detection
 import vision_transformer as vit
         
         
