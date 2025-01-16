@@ -1,6 +1,3 @@
-'''
-Train Best Model with Leave-One-Out Strategy
-'''
 import os
 import sys
 import torch
@@ -15,9 +12,7 @@ import wandb
 
 # Fixed Hyperparameters
 PATCH_SIZE = 256
-STRIDE = 8
 FEATURE_SIZE = 384
-TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 EPOCHS = 20
 THRESHOLD = 0.5
@@ -32,11 +27,11 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
-ARCHITECTURE = "3rd Explore stabalization with LR scheduler"
+ARCHITECTURE = ""
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
+DIRECTORY = CURRENT_PATH + '/scaled_aligned_v2_v3'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -47,9 +42,6 @@ if len(sys.argv) < 3:
     print("Use: python run_best_experiment.py imidx gpu")
     sys.exit()
 
-# if len(sys.argv) < 2:
-#     print("Use: python run_best_experiment.py gpu")
-#     sys.exit()
     
 i = int(sys.argv[1])
 gpu = int(sys.argv[2])
@@ -121,7 +113,7 @@ if True:
                 )
 
     # Save
-    model.save(outdir=OUTPUT_DIR)
+    model.save(outdir=OUTPUT_DIR, model_name='best_model_v2_1')
 
 
     # Validate
@@ -138,7 +130,7 @@ if True:
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
-
+    mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(

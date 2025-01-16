@@ -29,13 +29,11 @@ OUTPUT_DIR = "/model_output/output/"
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
-torch.set_num_threads(8) # set only 8 cpus, the same number as requested
+torch.set_num_threads(8)
 
 # Fixed Hyperparameters
 PATCH_SIZE = 256
-STRIDE = 8
 FEATURE_SIZE = 384
-TOKENS_PER_PATCH = PATCH_SIZE // STRIDE
 STEP = 16
 EPOCHS = 20
 THRESHOLD = 0.5
@@ -49,7 +47,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # All images have been pre-scaled
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = "model version 3: evaluate on validation set"
+ARCHITECTURE = "model version 3: evaluate on validation set (40)"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -105,12 +103,14 @@ for i in tqdm(range(len(annot_files))):
             "learning_rate":LR,
             "scale_factor":'1.0, all images have been prescaled',
             "epochs": EPOCHS,
+            'step':STEP,
             "feature_size":FEATURE_SIZE,
             "patch_size":PATCH_SIZE,
             "weight_decay":WEIGHT_DECAY,
             "probability_threshold":THRESHOLD,
             "dilation":DILATION,
-            "gaussian":'gaussian not need for prediction'
+            "gaussian":'gaussian not need for prediction',
+            'Number of validation images':len(annot_files)
         },
         name=f'{imid}',
         reinit=True
@@ -124,8 +124,8 @@ for i in tqdm(range(len(annot_files))):
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
-    # filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    filename = predictions_dir + validation_file.replace('phenotype.tif','_probabilities') # no ground truth case
+    filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
+    # filename = predictions_dir + validation_file.replace('phenotype_outlines.tif','_probabilities') # no ground truth case
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
     evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')

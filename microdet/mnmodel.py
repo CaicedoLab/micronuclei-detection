@@ -39,12 +39,13 @@ class DiceLoss(torch.nn.Module):
         self.reduction = reduction
 
     def forward(self, prediction, ground_truth):
+        # Ground truth expected to be binaries, 0s and 1s
         # Conclusion, do not use one-hot encoding
         
         assert prediction.shape == ground_truth.shape, f'Predictions shape does not match the ground truth!'
         
         probs = torch.sigmoid(prediction)
-        ground_truth = ground_truth.long()
+        ground_truth = ground_truth.long() # convert torch.tensor 3.14 to 3, etc.
         
         num = probs * ground_truth # numerator
         num = torch.sum(num, dim=(2,3))  # Sum over all pixels NxCxHxW --> NxC
@@ -55,7 +56,6 @@ class DiceLoss(torch.nn.Module):
         den2 = ground_truth * ground_truth # 2nd denominator
         den2 = torch.sum(den2, dim=(2,3))
         
-        # dice_loss = 2. * (num+ self.smoothing) / (den1 + den2 + self.smoothing)
         dice_loss_mn = 2. * (num[:,0]+ self.smoothing) / (den1[:,0] + den2[:,0] + self.smoothing)
         dice_loss_n = 2. * (num[:,1]+ self.smoothing) / (den1[:,1] + den2[:,1] + self.smoothing)
         
@@ -140,7 +140,8 @@ class MicronucleiModel():
         if len(validation_files) > 0:
             self.validation_set = mnds.MicronucleiDataset(
                 filelist=validation_files, 
-                directory=data_dir, 
+                # directory=data_dir,
+                directory=os.getcwd() + '/all_data_micronuclei/validation',
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,
@@ -169,7 +170,7 @@ class MicronucleiModel():
             # Use all default parameters, gamma = 2 so far is good
             self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9) # add weight decy / regularization
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9)
         
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer=self.optimizer,
@@ -193,7 +194,7 @@ class MicronucleiModel():
             p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
             
             # Loss function   
-            Y = y.to(self.device).float()
+            Y = (y.to(self.device) > 0).float() # convert to binary (0 & 1)
             # Y = Y.unsqueeze(dim=1)
             
             # decoder_params = torch.cat([x.view(-1) for x in self.model.decoder.parameters()])
@@ -239,7 +240,7 @@ class MicronucleiModel():
                         vout = self.model(vin.to(self.device))
                         # output resolution: 128
                         vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
-                        Y = vls.to(self.device).float()
+                        Y = (vls.to(self.device) > 0).float() # convert to binary (0 & 1)
                         
                         vloss = self.loss_fn(vout, Y)
                         running_vloss += vloss
@@ -258,13 +259,13 @@ class MicronucleiModel():
         wandb.log({"Train time":C})
 
         
-    def save(self, outdir="models/"):
+    def save(self, outdir="models/", model_name='model'):
         # if self.need_validation_set: # LOO
         #     output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
         # # elif self.gaussian:
         # #     output_file = f'{self.data_dir}{outdir}best_model_gaussian.pth'
         # else: # train with all images
-        output_file = f'{self.data_dir}{outdir}best_model_v3.pth'
+        output_file = f'{self.data_dir}{outdir}{model_name}.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
