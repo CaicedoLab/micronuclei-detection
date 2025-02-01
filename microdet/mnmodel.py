@@ -190,7 +190,7 @@ class MicronucleiModel():
             self.optimizer.zero_grad()
             p = self.model(x.to(self.device))
 
-            # output resolution: 128
+            # output resolution: 128, interpolate to 256
             p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
             
             # Loss function   

@@ -48,7 +48,8 @@ WEIGHT_DECAY = 1e-6
 # How do deal with different scale factor for training? (scale v3 first)
 SCALE_FACTOR = 1.0 # All images have been pre-scaled
 GAUSSIAN = True
-ARCHITECTURE = "Train model version 3 (103 images)"
+EDGES = False
+ARCHITECTURE = "Train model version 3 (103 images), edges=False (avoid overlap)"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -87,6 +88,7 @@ wandb.init(
         "weight_decay":WEIGHT_DECAY,
         "probability_threshold":THRESHOLD,
         "gaussian":GAUSSIAN,
+        'edges':EDGES,
         'Number of training images':len(training_files)
     },
     name=f'model version 3'
@@ -100,7 +102,7 @@ model = mnmodel.MicronucleiModel(
     validation_files=validation_filelist,
     patch_size=PATCH_SIZE,
     scale_factor=SCALE_FACTOR,
-    edges=True,
+    edges=EDGES, # False
     gaussian=GAUSSIAN
 )
 
