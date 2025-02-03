@@ -48,7 +48,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # All images have been pre-scaled
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"Evaluate 40 images with edges off model version 3"
+ARCHITECTURE = f"1st: Evaluate 47 images with edges off model version 3"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -71,11 +71,8 @@ models_dir = OUTPUT_DIR
 
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
-    CURRENT_PATH + '/all_data_micronuclei/train',
-    device, 
-    patch_size=PATCH_SIZE, 
-    edges=False, # not necessary in prediction script, only work when getting item from dataloader
-    gaussian=False # not needed in predict() function
+    data_dir=CURRENT_PATH + '/all_data_micronuclei/train',
+    device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
 model.load('best_model_v3.pth', model_dir=models_dir)

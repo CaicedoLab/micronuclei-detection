@@ -49,7 +49,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0 # All images have been pre-scaled
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "Train model version 3 (103 images), edges=False (avoid overlap)"
+ARCHITECTURE = "Train model version 3 (121 images)"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -102,7 +102,7 @@ model = mnmodel.MicronucleiModel(
     validation_files=validation_filelist,
     patch_size=PATCH_SIZE,
     scale_factor=SCALE_FACTOR,
-    edges=EDGES, # False
+    edges=EDGES, # False, this will recover the input edges, reducing performance
     gaussian=GAUSSIAN
 )
 
