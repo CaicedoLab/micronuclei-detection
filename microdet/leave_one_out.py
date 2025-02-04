@@ -27,8 +27,8 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
-EDGES = FALSE
-ARCHITECTURE = "LOO with dataset v2 & v3"
+EDGES = True # if do LOO on v2 and v3 datasets only
+ARCHITECTURE = "LOO with dataset v2 & v3 on v3 only (6 images, train on 23)"
 
 
 CURRENT_PATH = os.getcwd()
@@ -39,13 +39,13 @@ OUTPUT_DIR = "/model_output/output/"
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
-if len(sys.argv) < 2:
-    print("Use: python leave_one_out.py gpu")
+if len(sys.argv) < 3:
+    print("Use: python leave_one_out.py imid gpu")
     sys.exit()
 
     
-# i = int(sys.argv[1])
-gpu = int(sys.argv[1])
+i = int(sys.argv[1])
+gpu = int(sys.argv[2])
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
 
@@ -57,8 +57,8 @@ annot_files.sort()
 
 
 # for i in range(len(annot_files)):
-for i in range(6):
-# if True:
+# for i in range(6):
+if True:
     # temp code
     hela_rpe_ids = ['C1-20X_c0_B3_Tile-15.phenotype_outlines.png', 
                 'C1-20X_c0_B3_Tile-24.phenotype_outlines.png', 
@@ -74,7 +74,7 @@ for i in range(6):
     del training_files[j]
     # del training_files[i]
 
-    image_id = validation_files[0].split('.')[0]
+    image_id = hela_rpe_ids[i].split('.')[0]
 
     key_file = open('./wandb_key.txt', 'r')
     key = key_file.readline()
@@ -112,7 +112,7 @@ for i in range(6):
         validation_files=validation_files, 
         patch_size=PATCH_SIZE,
         scale_factor=SCALE_FACTOR,
-        edges=EDGES, # FALSE
+        edges=EDGES, # False
         gaussian=GAUSSIAN # Gaussian is only applied in training stage
     )
 
@@ -135,7 +135,7 @@ for i in range(6):
 
     # Select image for analysis
     # validation_file = annot_files[i]
-    validation_file = annot_files[j]
+    validation_file = hela_rpe_ids[i]
     imid = validation_file.split('.')[0]
 
     # Load image and annotations
@@ -147,10 +147,7 @@ for i in range(6):
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(
         DIRECTORY, 
-        device, 
-        patch_size=PATCH_SIZE, 
-        edges=EDGES,
-        gaussian=False # predict() function has nothing to do with gaussian sampling
+        device
     )
     model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)

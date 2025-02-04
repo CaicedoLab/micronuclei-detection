@@ -6,7 +6,6 @@
 
 import os
 import sys
-sys.path.append('../f')
 import time
 import skimage.morphology
 import torch
@@ -48,7 +47,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # All images have been pre-scaled
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"1st: Evaluate 47 images with edges off model version 3"
+ARCHITECTURE = f"3rd: Evaluate 47 images with edges off model version 3"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
