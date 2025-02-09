@@ -1,7 +1,7 @@
 # Submit file
 universe = docker
 # link to self-built docker image
-docker_image = yasuo0810/dinov2_chtc:v0.6
+docker_image = yasuo0810/dinov2_chtc:v0.8
 
 # set the executable to run
 executable = ./grid_search.sh

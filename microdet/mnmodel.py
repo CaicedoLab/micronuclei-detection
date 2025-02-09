@@ -141,7 +141,7 @@ class MicronucleiModel():
             self.validation_set = mnds.MicronucleiDataset(
                 filelist=validation_files, 
                 # directory=data_dir,
-                directory=os.getcwd() + '/v3_overlap_experiment/validation',
+                directory=os.getcwd() + '/all_data_micronuclei/validation',
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,

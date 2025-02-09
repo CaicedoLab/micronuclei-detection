@@ -15,13 +15,13 @@ usage() {
 while getopts ":i:" opt; do
     case ${opt} in
         i )
-            imidx=$OPTARG
+            microscope=$OPTARG
             ;;
     esac
 done
 shift $((OPTIND -1))
 
 mkdir predictions
-output_file="prediction_$imidx.txt"
-python3 run_best_experiment.py $imidx $gpu > $output_file
+output_file="prediction_$microscope.txt"
+python3 leave_one_out.py $microscope $gpu > $output_file
 cp $output_file predictions/

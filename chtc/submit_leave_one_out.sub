@@ -5,13 +5,13 @@ docker_image = yasuo0810/dinov2_chtc:v0.8
 
 
 executable = ./run_leave_one_out.sh
-arguments = -i $(Process)
+arguments = -i $(microscope)
 log = log/log_best_$(Cluster)_$(Process).log
 error = error/job_best_$(Cluster)_$(Process).err
 output = output/job_best_$(Cluster)_$(Process).out
 
 transfer_input_files = microdet.tar.gz
-transfer_output_files = microdet/scale_aligned_v2_v3/model_output, microdet/predictions
+transfer_output_files = microdet/all_data_micronuclei/model_output, microdet/predictions
 
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
@@ -27,4 +27,4 @@ request_disk = 60GB
 
 Requirements =  Machine == ("jcaicedogpu0001.chtc.wisc.edu")
 
-queue 6
+queue microscope from microscopes.txt

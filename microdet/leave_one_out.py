@@ -30,7 +30,7 @@ SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
 EDGES = True # if do LOO on v2 and v3 datasets only
-ARCHITECTURE = "Leave one microscope out experiment"
+ARCHITECTURE = "Scaled leave one microscope out experiment"
 
 
 CURRENT_PATH = os.getcwd()
@@ -42,12 +42,12 @@ os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 if len(sys.argv) < 3:
-    print("Use: python leave_one_out.py subset gpu")
+    print("Use: python leave_one_out.py microscope gpu")
     sys.exit()
 
     
 # i = int(sys.argv[1])
-subset = str(sys.argv[1])
+subset = str(sys.argv[1]) # microscope
 gpu = int(sys.argv[2])
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
@@ -106,10 +106,9 @@ if True:
             "gaussian":GAUSSIAN,
             'edges':EDGES,
             'step':STEP,
-            'Number of training images':len(new_training_files),
-            'Number of validation images':len(annot_files)
+            'Number of training images':len(new_training_files)
         },
-        name=f'Leave {subset} out',
+        name=f'(Train) Leave {subset} out',
         reinit=True
     )
 
@@ -146,6 +145,31 @@ for i in tqdm(range(len(validation_files))):
     # validation_file = annot_files[i]
     validation_file = validation_files[i]
     imid = validation_file.split('.')[0]
+    
+    ARCHITECTURE = f'Eval 47 images leaving {subset} out'
+    wandb.init(
+        project='Best_Experiment',
+        config={
+            "architecture":ARCHITECTURE,
+            "Loss": LOSS_FN,
+            "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
+            "fine_tuning":FINETUNE,
+            "batch_size":BATCH_SIZE,
+            "learning_rate":LR,
+            "scale_factor":'Predict on images that are not scaled',
+            "epochs": EPOCHS,
+            'step':STEP,
+            "feature_size":FEATURE_SIZE,
+            "patch_size":PATCH_SIZE,
+            "weight_decay":WEIGHT_DECAY,
+            "probability_threshold":THRESHOLD,
+            "dilation":DILATION,
+            "gaussian":'gaussian not need for prediction',
+            'Number of validation images':len(annot_files)
+        },
+        name=f'{imid}',
+        reinit=True
+    )
 
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
