@@ -16,7 +16,7 @@ import wandb
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
+DIRECTORY = CURRENT_PATH + '/v3_overlap_experiment/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -45,11 +45,10 @@ FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters
-# How do deal with different scale factor for training? (scale v3 first)
-SCALE_FACTOR = 1.0 # All images have been pre-scaled
+SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "Train model version 3 (121 images)"
+ARCHITECTURE = "v3: Train on 119 images, then get overlap for 6 Hela & RPE1."
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -60,7 +59,7 @@ annot_files.sort()
 training_files = annot_files.copy()
 
 # Validation Files
-validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei/validation')
+validation_files = os.listdir(CURRENT_PATH + '/v3_overlap_experiment/validation')
 validation_files = [file for file in validation_files if not file.startswith('.')]
 validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
 validation_files.sort()
@@ -81,7 +80,7 @@ wandb.init(
         "batch_size":BATCH_SIZE,
         "start_learning_rate":LR,
         "lr_scheduler":"Cosine",
-        "scale_factor":'1.0, all images have been prescaled',
+        "scale_factor":'Trained on non-scaled images',
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
         "patch_size":PATCH_SIZE,
@@ -117,7 +116,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='best_model_v3')
+model.save(outdir=OUTPUT_DIR, model_name='hela_rpe_overlap_exp')
 
 # release the resources
 torch.cuda.empty_cache()

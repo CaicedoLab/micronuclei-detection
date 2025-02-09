@@ -1,0 +1,16 @@
+{"time":"2025-02-06T13:32:50.50354238-06:00","level":"INFO","msg":"stream: starting","core version":"0.19.6","symlink path":"/scr/yren/micronuclei-detection/mnfinder/wandb/run-20250206_133248-52rx3md7/logs/debug-core.log"}
+{"time":"2025-02-06T13:32:50.608816579-06:00","level":"INFO","msg":"created new stream","id":"52rx3md7"}
+{"time":"2025-02-06T13:32:50.608841946-06:00","level":"INFO","msg":"stream: started","id":"52rx3md7"}
+{"time":"2025-02-06T13:32:50.608855012-06:00","level":"INFO","msg":"writer: Do: started","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:32:50.60891697-06:00","level":"INFO","msg":"handler: started","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:32:50.608942978-06:00","level":"INFO","msg":"sender: started","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:32:50.73059028-06:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-06T13:33:12.243490527-06:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-06T13:33:12.243990286-06:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-06T13:33:12.469629396-06:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-06T13:33:12.588949842-06:00","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2025-02-06T13:33:13.591579559-06:00","level":"INFO","msg":"stream: closing","id":"52rx3md7"}
+{"time":"2025-02-06T13:33:13.591594555-06:00","level":"INFO","msg":"handler: closed","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:33:13.591601384-06:00","level":"INFO","msg":"writer: Close: closed","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:33:13.591658673-06:00","level":"INFO","msg":"sender: closed","stream_id":"52rx3md7"}
+{"time":"2025-02-06T13:33:13.591664029-06:00","level":"INFO","msg":"stream: closed","id":"52rx3md7"}

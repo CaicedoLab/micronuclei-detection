@@ -140,8 +140,8 @@ class MicronucleiModel():
         if len(validation_files) > 0:
             self.validation_set = mnds.MicronucleiDataset(
                 filelist=validation_files, 
-                directory=data_dir,
-                # directory=os.getcwd() + '/all_data_micronuclei/validation',
+                # directory=data_dir,
+                directory=os.getcwd() + '/v3_overlap_experiment/validation',
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,

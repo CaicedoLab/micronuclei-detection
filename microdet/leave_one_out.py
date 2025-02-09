@@ -5,6 +5,8 @@ import mnmodel
 import mnds
 import evaluation
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 import os
 import sys
@@ -28,11 +30,11 @@ SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
 EDGES = True # if do LOO on v2 and v3 datasets only
-ARCHITECTURE = "LOO with dataset v2 & v3 on v3 only (6 images, train on 23)"
+ARCHITECTURE = "Leave one microscope out experiment"
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/scale_aligned_v2_v3'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -40,11 +42,12 @@ os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 if len(sys.argv) < 3:
-    print("Use: python leave_one_out.py imid gpu")
+    print("Use: python leave_one_out.py subset gpu")
     sys.exit()
 
     
-i = int(sys.argv[1])
+# i = int(sys.argv[1])
+subset = str(sys.argv[1])
 gpu = int(sys.argv[2])
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
@@ -54,27 +57,31 @@ files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
 annot_files.sort()
+training_files = annot_files.copy()
 
+# remove subset from training_files
+df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei/metadata.csv')
+files_to_remove = df[df.datasets == subset].filenames.to_list()
+fn = lambda file: file.replace('phenotype.tif', 'phenotype_outline.png')
+files_to_remove = [fn(file) for file in files_to_remove]
+new_training_files = [file for file in training_files if file not in files_to_remove]
+
+# Validation Files
+validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei/validation')
+validation_files = [file for file in validation_files if not file.startswith('.')]
+validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
+validation_files.sort()
+
+validation_filelist = validation_files.copy()
 
 # for i in range(len(annot_files)):
 # for i in range(6):
 if True:
-    # temp code
-    hela_rpe_ids = ['C1-20X_c0_B3_Tile-15.phenotype_outlines.png', 
-                'C1-20X_c0_B3_Tile-24.phenotype_outlines.png', 
-                'C1-20X_c0_B3_Tile-5.phenotype_outlines.png', 
-                'C1-20X_c0_phalloidin_C3_Tile-15.phenotype_outlines.png', 
-                'C1-20X_c0_phalloidin_C3_Tile-18.phenotype_outlines.png', 
-                'C1-20X_c0_phalloidin_C3_Tile-44.phenotype_outlines.png']
     
-    training_files = annot_files.copy()
+    # training_files = annot_files.copy()
     # validation_files = [annot_files[i]]
-    validation_files = [hela_rpe_ids[i]]
-    j = annot_files.index(hela_rpe_ids[i])
-    del training_files[j]
     # del training_files[i]
 
-    image_id = hela_rpe_ids[i].split('.')[0]
 
     key_file = open('./wandb_key.txt', 'r')
     key = key_file.readline()
@@ -98,9 +105,11 @@ if True:
             "dilation":DILATION,
             "gaussian":GAUSSIAN,
             'edges':EDGES,
-            'Number of training images':len(training_files)
+            'step':STEP,
+            'Number of training images':len(new_training_files),
+            'Number of validation images':len(annot_files)
         },
-        name=f'{image_id}',
+        name=f'Leave {subset} out',
         reinit=True
     )
 
@@ -108,7 +117,7 @@ if True:
     model = mnmodel.MicronucleiModel(
         DIRECTORY, 
         device, 
-        training_files=training_files, 
+        training_files=new_training_files, 
         validation_files=validation_files, 
         patch_size=PATCH_SIZE,
         scale_factor=SCALE_FACTOR,
@@ -126,16 +135,16 @@ if True:
                 )
 
     # Save
-    model.save(outdir=OUTPUT_DIR, model_name=image_id)
+    model.save(outdir=OUTPUT_DIR, model_name=f'leave_{subset}_out')
 
-
+for i in tqdm(range(len(validation_files))):
     # Validate
     predictions_dir = DIRECTORY + OUTPUT_DIR
     models_dir = OUTPUT_DIR
 
     # Select image for analysis
     # validation_file = annot_files[i]
-    validation_file = hela_rpe_ids[i]
+    validation_file = validation_files[i]
     imid = validation_file.split('.')[0]
 
     # Load image and annotations
@@ -149,7 +158,8 @@ if True:
         DIRECTORY, 
         device
     )
-    model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
+    # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
+    model.load(f'leave_{subset}_out', model_dir=models_dir)
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
@@ -157,6 +167,7 @@ if True:
     mn_pred = probabilities[0,:,:] > THRESHOLD
     evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
 
-    # release the resources
-    torch.cuda.empty_cache()
-    wandb.finish()
+
+# release the resources
+torch.cuda.empty_cache()
+wandb.finish()

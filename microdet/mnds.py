@@ -160,7 +160,14 @@ class MicronucleiDataset(Dataset):
                 # elif (r.y + PS < H and r.x + PS < W):
                 elif (r.y + PS < H or r.x + PS < W): # or statement might fit non-square images?
                     # If not covered, add a new patch that covers the location
-                    extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
+                    if (r.y == 0 and r.x == 0):
+                        extra = [[0, 0]]
+                    elif (r.x == 0 and r.y != 0):
+                        extra = [[np.random.randint(max(r.y - PS,0), r.y), 0]]
+                    elif (r.y == 0 and r.x != 0):
+                        extra = [[0, np.random.randint(max(r.x - PS,0), r.x)]]
+                    else:
+                        extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
                     C = np.append(C, extra, axis=0)
                     A[C.shape[0]-1] = [(r.y, r.x)]
 
