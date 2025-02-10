@@ -59,10 +59,10 @@ annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
 annot_files.sort()
 training_files = annot_files.copy()
 
-# remove subset from training_files
+# remove subset from training_files (NEED TO FIX CODE: WRONG)
 df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei/metadata.csv')
 files_to_remove = df[df.datasets == subset].filenames.to_list()
-fn = lambda file: file.replace('phenotype.tif', 'phenotype_outline.png')
+fn = lambda file: file.replace('phenotype.tif', 'phenotype_outlines.png')
 files_to_remove = [fn(file) for file in files_to_remove]
 new_training_files = [file for file in training_files if file not in files_to_remove]
 
@@ -135,11 +135,21 @@ if True:
 
     # Save
     model.save(outdir=OUTPUT_DIR, model_name=f'leave_{subset}_out')
+    
+# Load model and compute probabilities
+model = mnmodel.MicronucleiModel(
+    DIRECTORY, 
+    device
+)
+# model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
+model.load(f'leave_{subset}_out.pth', model_dir=OUTPUT_DIR)
+
+# Validate
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/validation'
+predictions_dir = DIRECTORY + OUTPUT_DIR
+models_dir = OUTPUT_DIR
 
 for i in tqdm(range(len(validation_files))):
-    # Validate
-    predictions_dir = DIRECTORY + OUTPUT_DIR
-    models_dir = OUTPUT_DIR
 
     # Select image for analysis
     # validation_file = annot_files[i]
@@ -177,13 +187,6 @@ for i in tqdm(range(len(validation_files))):
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
-    # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(
-        DIRECTORY, 
-        device
-    )
-    # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-    model.load(f'leave_{subset}_out', model_dir=models_dir)
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     np.save(filename, probabilities)
