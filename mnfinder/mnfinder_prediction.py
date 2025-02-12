@@ -22,23 +22,15 @@ from mnfinder import MNClassifier
 import microdet.evaluation
 import microdet.mnds
 
-ARCHITECTURE = "MNFinder predictions on 47 validation images"
+ARCHITECTURE = "MNFinder predictions on 47 validation images aligned to mnfinder scales"
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/validation/'
-
-SCALE_FACTOR = 1.0
+DIRECTORY = CURRENT_PATH + '/validation_no_rescale/'
 
 
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 validation_files = [x for x in filelist if x.endswith('.phenotype.tif')]
 validation_files.sort()
-
-# if len(sys.argv) < 2:
-#     print("Use: python mnfinder_prediction.py imid")
-#     sys.exit()
-
-# i = int(sys.argv[1])
 
 
 key_file = open('../microdet/wandb_key.txt', 'r')
@@ -47,26 +39,33 @@ wandb.login(key=key)
     
 attention_model = MNClassifier.get_model('Attention')
 
+df = pd.read_csv('/scr/yren/all_data_micronuclei/metadata.csv')
+data_mnfinder = df[df.datasets=='mnfinder_validation']
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
+    
+    # SCALE_FACTOR = 1.0
+    mag = df.loc[df.filenames == validation_files[i], 'magnification'].iloc[0]
+    micron = df.loc[df.filenames == validation_files[i], 'micron'].iloc[0]
+    SCALE_FACTOR = round((20/11/(mag/micron)), 1)
    
     wandb.init(
         project='Best_Experiment',
         config={
             "architecture":ARCHITECTURE,
-            'model':'MNFinder'
+            'model':'MNFinder',
+            'scale_factor':SCALE_FACTOR
         },
         name=f'{imid}',
         reinit=True
     )
 
-    im = skimage.io.imread(DIRECTORY + validation_files[i])
+    im = microdet.mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     
     labels = attention_model.predict(im)
     micro_labels = labels[:,:,2]
-    micro_labels = np.asarray(micro_labels, dtype='uint16')
 
-    save_path = DIRECTORY + 'mnfinder_predictions_output/'
+    save_path = DIRECTORY + 'predictions_scale_aligned_to_mnfinder/'
     np.save(save_path + imid + '._probabilities.npy', micro_labels)
 
     # evaluation
