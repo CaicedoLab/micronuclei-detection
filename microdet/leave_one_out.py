@@ -30,11 +30,11 @@ SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
 EDGES = True # if do LOO on v2 and v3 datasets only
-ARCHITECTURE = "Scaled leave one microscope out experiment"
+ARCHITECTURE = "Non-scaled leave one microscope out experiment"
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/train'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -60,14 +60,14 @@ annot_files.sort()
 training_files = annot_files.copy()
 
 # remove subset from training_files (NEED TO FIX CODE: WRONG)
-df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei/metadata.csv')
+df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei_no_rescale/metadata.csv')
 files_to_remove = df[df.datasets == subset].filenames.to_list()
 fn = lambda file: file.replace('phenotype.tif', 'phenotype_outlines.png')
 files_to_remove = [fn(file) for file in files_to_remove]
 new_training_files = [file for file in training_files if file not in files_to_remove]
 
 # Validation Files
-validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei/validation')
+validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
 validation_files = [file for file in validation_files if not file.startswith('.')]
 validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
 validation_files.sort()
@@ -145,7 +145,7 @@ model = mnmodel.MicronucleiModel(
 model.load(f'leave_{subset}_out.pth', model_dir=OUTPUT_DIR)
 
 # Validate
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei/validation'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
 predictions_dir = DIRECTORY + OUTPUT_DIR
 models_dir = OUTPUT_DIR
 
@@ -156,7 +156,7 @@ for i in tqdm(range(len(validation_files))):
     validation_file = validation_files[i]
     imid = validation_file.split('.')[0]
     
-    ARCHITECTURE = f'Eval 47 images leaving {subset} out'
+    ARCHITECTURE = f'(Nonscaled) Eval 47 images leaving {subset} out'
     wandb.init(
         project='Best_Experiment',
         config={
