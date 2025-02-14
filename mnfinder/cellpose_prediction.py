@@ -12,9 +12,9 @@ import wandb
 import microdet.evaluation
 import microdet.mnds
 
-ARCHITECTURE = "Cellpose predictions on 47 validation images"
+ARCHITECTURE = "Cellpose predictions on 47 non-scaled validation images"
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/validation/'
+DIRECTORY = CURRENT_PATH + '/validation_no_rescale/'
 
 SCALE_FACTOR = 1.0
 
@@ -27,25 +27,28 @@ key_file = open('../microdet/wandb_key.txt', 'r')
 key = key_file.readline()
 wandb.login(key=key)
 
-model = models.Cellpose(model_type='nuclei')
+model = models.Cellpose(model_type='cyto3')
 channels = [0,0]
 
 
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
     
+    DIAM = 15
+    
     wandb.init(
         project='Best_Experiment',
         config={
             "architecture":ARCHITECTURE,
-            'model':'Cellpose'
+            'model':'Cellpose',
+            'diameter':DIAM
         },
         name=f'{imid}',
         reinit=True
     )
     
     im = skimage.io.imread(DIRECTORY + validation_files[i])
-    masks, flows, styles, diams = model.eval(im, diameter=None, channels=channels)
+    masks, flows, styles, diams = model.eval(im, diameter=DIAM, channels=channels)
     
     masks = np.asarray(masks, dtype='uint16')
     
