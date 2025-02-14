@@ -141,7 +141,7 @@ class MicronucleiModel():
             self.validation_set = mnds.MicronucleiDataset(
                 filelist=validation_files, 
                 # directory=data_dir,
-                directory=os.getcwd() + '/all_data_micronuclei/validation',
+                directory=os.getcwd() + '/all_data_micronuclei_no_rescale/validation',
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,
@@ -191,7 +191,8 @@ class MicronucleiModel():
             p = self.model(x.to(self.device))
 
             # output resolution: 128, interpolate to 256
-            p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
+            # output resolution is 256 x 256 now Feb 13
+            # p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
             
             # Loss function   
             Y = (y.to(self.device) > 0).float() # convert to binary (0 & 1)
@@ -239,7 +240,8 @@ class MicronucleiModel():
                         vin, vls = vdata
                         vout = self.model(vin.to(self.device))
                         # output resolution: 128
-                        vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
+                        # output resolution: 256, Feb 13
+                        # vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
                         Y = (vls.to(self.device) > 0).float() # convert to binary (0 & 1)
                         
                         vloss = self.loss_fn(vout, Y)
@@ -284,14 +286,15 @@ class MicronucleiModel():
         ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
         batch, coords = [], []
 
-        self.model.eval()
+        self.model.eval() # finetune not allowed, use pre-trained weights!
 
         def batch_predict(batch, coords):
             B = torch.cat(batch, axis=0)
             # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
             output = self.model(B.to(self.device))
             
-            output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
+            # output resolution 256, Feb 13
+            # output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
             
             # the output is not probability here (weights instead), last layer of detection model is binary classification, so we transform output to binary values.
             # classify pixel-wisely to 0 or 1, and scan all over the input image, and then average them, it is probability at the end.

@@ -16,7 +16,7 @@ import wandb
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/v3_overlap_experiment/train'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -48,7 +48,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "v3: Train on 119 images, then get overlap for 6 Hela & RPE1."
+ARCHITECTURE = "model v3 (256 resolution): dilation 0 on non-scaled images"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -59,7 +59,7 @@ annot_files.sort()
 training_files = annot_files.copy()
 
 # Validation Files
-validation_files = os.listdir(CURRENT_PATH + '/v3_overlap_experiment/validation')
+validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
 validation_files = [file for file in validation_files if not file.startswith('.')]
 validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
 validation_files.sort()
@@ -116,7 +116,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='hela_rpe_overlap_exp')
+model.save(outdir=OUTPUT_DIR, model_name='model_v3_256_res_nonscaled')
 
 # release the resources
 torch.cuda.empty_cache()

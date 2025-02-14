@@ -22,7 +22,7 @@ import mnmodel
 import evaluation
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/v3_overlap_experiment/validation'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
 OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
@@ -46,8 +46,8 @@ WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # All images have been pre-scaled
-DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"Evaluate on HeLa & RPE1 (v3 trained on 119 images)"
+DILATION = 0 # the best, only used in prediction
+ARCHITECTURE = f"Evaluating non scaled v3 with dilation 0 and 256 output resolution"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -70,11 +70,11 @@ models_dir = OUTPUT_DIR
 
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
-    data_dir=CURRENT_PATH + '/v3_overlap_experiment/train',
+    data_dir=CURRENT_PATH + '/all_data_micronuclei_no_rescale/train',
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('hela_rpe_overlap_exp.pth', model_dir=models_dir)
+model.load('model_v3_256_res_nonscaled.pth', model_dir=models_dir)
 
 
 # Log in WanDB

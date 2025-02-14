@@ -51,51 +51,46 @@ class DetectionModel(torch.nn.Module):
         #     torch.nn.ReLU(),
         # )
         # self.decoder.to(device)
-        
+        def conv_block(in_channels, out_channels, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128]):
+            return torch.nn.Sequential(
+                torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
+                torch.nn.LayerNorm(norm_shape),
+                torch.nn.ReLU()
+            )
+            
         self.upscale1 = torch.nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=(2,2), stride=2)
         self.upscale1.to(device)
-        self.block1 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
-            torch.nn.ReLU(),
-        )
-        self.block2 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
-            torch.nn.ReLU(),
-        )
-        self.block3 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
-            torch.nn.ReLU(),
-        )
+        self.block1 = conv_block(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1), norm_shape=[192, 64, 64])
+        self.block2 = conv_block(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1), norm_shape=[192, 64, 64])
+        self.block3 = conv_block(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1), norm_shape=[192, 64, 64])
+        
         self.block1.to(device)
         self.block2.to(device)
         self.block3.to(device)
         
         self.upscale2 = torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2)
         self.upscale2.to(device)
-        self.block4 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([96, 128, 128]), # best
-            torch.nn.ReLU(),
-        )
-        self.block5 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([96, 128, 128]), # best
-            torch.nn.ReLU(),
-        )
-        self.block6 = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
-            torch.nn.LayerNorm([96, 128, 128]), # best
-            torch.nn.ReLU(),
-        )
+        self.block4 = conv_block(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128])
+        self.block5 = conv_block(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128])
+        self.block6 = conv_block(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128])
+        
         self.block4.to(device)
         self.block5.to(device)
         self.block6.to(device)
         
+        # to resolution 256
+        self.upscale3 = torch.nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=(2,2), stride=2)
+        self.upscale3.to(device)
+        self.block7 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
+        self.block8 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
+        self.block9 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
+        
+        self.block7.to(device)
+        self.block8.to(device)
+        self.block9.to(device)
+        
         # classification layer
-        self.classifier = torch.nn.Conv2d(in_channels=96, out_channels=2, kernel_size=(1,1))
+        self.classifier = torch.nn.Conv2d(in_channels=48, out_channels=2, kernel_size=(1,1))
         self.classifier.to(device)
                 
     def forward(self, x):
@@ -122,6 +117,14 @@ class DetectionModel(torch.nn.Module):
             x = self.block5(x) + residual3
             x = self.block6(x) + residual4
             
+            # part of resolution to 256
+            x = self.upscale3(x)
+            residual5 = x
+            x = self.block7(x)
+            residual6 = x
+            x = self.block8(x) + residual5
+            x = self.block9(x) + residual6
+            
             x = self.classifier(x)
         else:
             with torch.no_grad():
@@ -145,6 +148,14 @@ class DetectionModel(torch.nn.Module):
             residual4 = x
             x = self.block5(x) + residual3
             x = self.block6(x) + residual4
+            
+            # part of resolution to 256
+            x = self.upscale3(x)
+            residual5 = x
+            x = self.block7(x)
+            residual6 = x
+            x = self.block8(x) + residual5
+            x = self.block9(x) + residual6
             
             x = self.classifier(x)
         
