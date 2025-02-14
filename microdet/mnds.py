@@ -242,21 +242,20 @@ class MicronucleiDataset(Dataset):
             height, width = int(height), int(width)
             r,c = int(item["coord"][0]), int(item["coord"][1])
             crop = self.images[item["Image"]]["image"][r:r+height,c:c+width]
-            mn_mask = self.images[item["Image"]]["micro"][r:r+height,c:c+width]
-            n_mask = self.images[item["Image"]]["nuclei"][r:r+height,c:c+width]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+self.patch_size,c:c+self.patch_size]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+self.patch_size,c:c+self.patch_size]
             
             crop = patch_to_rgb(crop, self.edges)
             mask = torch.Tensor(np.concatenate(
                 (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
             ))
 
-            # interpolate to Patch Size x Patch Size before concatention
+            # interpolate to Patch Size x Patch Size before concatention, should not interpolate ground truth
             # interpolation messed up binary values sometime, remember to check
             crop = torch.nn.functional.interpolate(crop.unsqueeze(0), (self.patch_size, self.patch_size))
-            mask = torch.nn.functional.interpolate(mask.unsqueeze(0), (self.patch_size, self.patch_size))
 
             crop = crop.squeeze(0)
-            mask = mask.squeeze(0)
+            # mask = mask.squeeze(0)
         
         # Crop patches out of the full image
         else: # original code
