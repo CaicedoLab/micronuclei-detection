@@ -47,7 +47,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # All images have been pre-scaled
 DILATION = 0 # the best, only used in prediction
-ARCHITECTURE = f"Evaluating non scaled v3 with dilation 0 and 256 output resolution"
+ARCHITECTURE = f"Evaluating non scaled v3 with 256 output resolution with no gaussian "
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -120,16 +120,21 @@ for i in tqdm(range(len(annot_files))):
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
-    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
+    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     # filename = predictions_dir + validation_file.replace('phenotype_outlines.tif','_probabilities') # no ground truth case
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
-    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
-    
-    # save labeled matrices
     labeled_mn = skimage.morphology.label(mn_pred)
     labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
+    
+    # dilate the labeled mn
+    dilation = skimage.morphology.disk(DILATION)
+    labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
+    
+    evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    
+    # save labeled matrices
     np.save(filename, labeled_mn)
     
 # release the resources

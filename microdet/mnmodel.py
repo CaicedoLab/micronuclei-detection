@@ -191,7 +191,6 @@ class MicronucleiModel():
             p = self.model(x.to(self.device))
 
             # output resolution: 128, interpolate to 256
-            # output resolution is 256 x 256 now Feb 13
             # p = torch.nn.functional.interpolate(p, (self.patch_size, self.patch_size))
             
             # Loss function   
@@ -240,7 +239,6 @@ class MicronucleiModel():
                         vin, vls = vdata
                         vout = self.model(vin.to(self.device))
                         # output resolution: 128
-                        # output resolution: 256, Feb 13
                         # vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
                         Y = (vls.to(self.device) > 0).float() # convert to binary (0 & 1)
                         
@@ -278,7 +276,7 @@ class MicronucleiModel():
         self.model.to(self.device)
         
         
-    def predict(self, image, stride=1, step=16, batch_size=512, dilation=0):
+    def predict(self, image, stride=1, step=16, batch_size=512):
         classes = self.model.classifier.out_channels
         probabilities = np.zeros((classes, image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
         counts = np.zeros((image.shape[0]//stride, image.shape[1]//stride), dtype=np.float32)
@@ -293,7 +291,6 @@ class MicronucleiModel():
             # pred0 = F.softmax(self.model(B.to(self.device))) need to be changed
             output = self.model(B.to(self.device))
             
-            # output resolution 256, Feb 13
             # output = torch.nn.functional.interpolate(output, (self.patch_size,self.patch_size))
             
             # the output is not probability here (weights instead), last layer of detection model is binary classification, so we transform output to binary values.
@@ -306,11 +303,11 @@ class MicronucleiModel():
             # print(f'P shape in batch_predict(): {P.shape}')
             
             # Postprocessing - only dilate the micronuclei channel
-            if dilation != 0:
-                dilated_P = np.zeros_like(P)
-                for i in range(0, dilated_P.shape[0]): # iterate all batches
-                    dilated_P[i,0,:,:] = skimage.morphology.dilation(P[i,0,:,:], footprint=skimage.morphology.disk(dilation))
-                P[:,0,:,:] = dilated_P[:,0,:,:] # replace micronuclei channel with dilated one
+            # if dilation != 0:
+            #     dilated_P = np.zeros_like(P)
+            #     for i in range(0, dilated_P.shape[0]): # iterate all batches
+            #         dilated_P[i,0,:,:] = skimage.morphology.dilation(P[i,0,:,:], footprint=skimage.morphology.disk(dilation))
+            #     P[:,0,:,:] = dilated_P[:,0,:,:] # replace micronuclei channel with dilated one
             
             for c in range(len(coords)):
                 y = coords[c]["a"]
