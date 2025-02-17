@@ -78,19 +78,8 @@ class DetectionModel(torch.nn.Module):
         self.block5.to(device)
         self.block6.to(device)
         
-        # to resolution 256
-        self.upscale3 = torch.nn.ConvTranspose2d(in_channels=96, out_channels=48, kernel_size=(2,2), stride=2)
-        self.upscale3.to(device)
-        self.block7 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
-        self.block8 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
-        self.block9 = conv_block(in_channels=48, out_channels=48, kernel_size=(3,3), padding=(1,1), norm_shape=[48, 256, 256])
-        
-        self.block7.to(device)
-        self.block8.to(device)
-        self.block9.to(device)
-        
         # classification layer
-        self.classifier = torch.nn.Conv2d(in_channels=48, out_channels=2, kernel_size=(1,1))
+        self.classifier = torch.nn.Conv2d(in_channels=96, out_channels=2, kernel_size=(1,1))
         self.classifier.to(device)
                 
     def forward(self, x):
@@ -117,14 +106,6 @@ class DetectionModel(torch.nn.Module):
             x = self.block5(x) + residual3
             x = self.block6(x) + residual4
             
-            # part of resolution to 256
-            x = self.upscale3(x)
-            residual5 = x
-            x = self.block7(x)
-            residual6 = x
-            x = self.block8(x) + residual5
-            x = self.block9(x) + residual6
-            
             x = self.classifier(x)
         else:
             with torch.no_grad():
@@ -148,14 +129,6 @@ class DetectionModel(torch.nn.Module):
             residual4 = x
             x = self.block5(x) + residual3
             x = self.block6(x) + residual4
-            
-            # part of resolution to 256
-            x = self.upscale3(x)
-            residual5 = x
-            x = self.block7(x)
-            residual6 = x
-            x = self.block8(x) + residual5
-            x = self.block9(x) + residual6
             
             x = self.classifier(x)
         
