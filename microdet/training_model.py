@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-'''
-Train Best Model with all 18 images at once
-'''
-
 import os
 import sys
 import torch
@@ -48,7 +44,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "model v3 (256 resolution): dilation 0 on non-scaled images"
+ARCHITECTURE = "model v3 - 128 res - fixed mnds - train on nonscaled data"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -116,7 +112,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='model_v3_256_res_nonscaled')
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
 
 # release the resources
 torch.cuda.empty_cache()

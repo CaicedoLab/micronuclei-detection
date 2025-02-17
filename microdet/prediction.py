@@ -45,9 +45,9 @@ FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
-SCALE_FACTOR = 1 # All images have been pre-scaled
-DILATION = 0 # the best, only used in prediction
-ARCHITECTURE = f"Evaluating non scaled v3 with 256 output resolution with no gaussian "
+SCALE_FACTOR = 1 # Trained on non-scaled images
+DILATION = 2 # the best, only used in prediction
+ARCHITECTURE = f"2nd: Model v3 evaluation: fixed mnds"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -74,7 +74,7 @@ model = mnmodel.MicronucleiModel(
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('model_v3_256_res_nonscaled.pth', model_dir=models_dir)
+model.load('DinoMN.pth', model_dir=models_dir)
 
 
 # Log in WanDB
@@ -129,8 +129,9 @@ for i in tqdm(range(len(annot_files))):
     labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
     
     # dilate the labeled mn
-    dilation = skimage.morphology.disk(DILATION)
-    labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
+    if DILATION > 0:
+        dilation = skimage.morphology.disk(DILATION)
+        labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
     
     evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
     
