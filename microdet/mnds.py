@@ -157,17 +157,29 @@ class MicronucleiDataset(Dataset):
                     for m in matches:
                         try: A[m].append((r.y, r.x))
                         except: A[m] = [(r.y, r.x)]
-                # elif (r.y + PS < H and r.x + PS < W):
                 elif (r.y + PS < H or r.x + PS < W): # or statement might fit non-square images?
                     # If not covered, add a new patch that covers the location
                     if (r.y == 0 and r.x == 0):
                         extra = [[0, 0]]
-                    elif (r.x == 0 and r.y != 0):
-                        extra = [[np.random.randint(max(r.y - PS,0), r.y), 0]]
+                    elif (r.y != 0 and r.x == 0):
+                        if (r.y + PS > H):
+                            extra = [[H - PS, 0]]
+                        else:
+                            extra = [[np.random.randint(max(r.y - PS,0), r.y), 0]]
                     elif (r.y == 0 and r.x != 0):
-                        extra = [[0, np.random.randint(max(r.x - PS,0), r.x)]]
+                        if (r.x + PS > W):
+                            extra = [[0, W - PS]]
+                        else:
+                            extra = [[0, np.random.randint(max(r.x - PS,0), r.x)]]
                     else:
-                        extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
+                        if (r.y + PS < H and r.x + PS < W):
+                            extra = [[np.random.randint(max(r.y - PS,0), r.y), np.random.randint(max(r.x - PS,0), r.x)]]
+                        elif (r.y + PS < H and r.x + PS > W):
+                            extra = [[np.random.randint(max(r.y - PS,0), r.y), W - PS]]
+                        elif (r.y + PS > H and r.x + PS < W):
+                            extra = [[H - PS, np.random.randint(max(r.x - PS,0), r.x)]]
+                        elif (r.y + PS > H and r.x + PS > W):
+                            extra = [[H - PS, W - PS]]
                     C = np.append(C, extra, axis=0)
                     A[C.shape[0]-1] = [(r.y, r.x)]
 
@@ -236,26 +248,31 @@ class MicronucleiDataset(Dataset):
         
     def __getitem__(self, idx):
         item = self.index[idx]
+        # print(item['Image'])
         
         if self.gaussian: # default: False
             height, width = np.random.normal(loc=self.patch_size, scale=20, size=2) # 20 is the best so far
             height, width = int(height), int(width)
             r,c = int(item["coord"][0]), int(item["coord"][1])
             crop = self.images[item["Image"]]["image"][r:r+height,c:c+width]
-            mn_mask = self.images[item["Image"]]["micro"][r:r+self.patch_size,c:c+self.patch_size]
-            n_mask = self.images[item["Image"]]["nuclei"][r:r+self.patch_size,c:c+self.patch_size]
+            mn_mask = self.images[item["Image"]]["micro"][r:r+height,c:c+width]
+            n_mask = self.images[item["Image"]]["nuclei"][r:r+height,c:c+width]
             
             crop = patch_to_rgb(crop, self.edges)
             mask = torch.Tensor(np.concatenate(
                 (mn_mask[np.newaxis,:,:], n_mask[np.newaxis,:,:]), axis=0
             ))
 
-            # interpolate to Patch Size x Patch Size before concatention, should not interpolate ground truth
+            # interpolate to Patch Size x Patch Size before concatention
             # interpolation messed up binary values sometime, remember to check
             crop = torch.nn.functional.interpolate(crop.unsqueeze(0), (self.patch_size, self.patch_size))
-
+            mask = torch.nn.functional.interpolate(mask.unsqueeze(0), (self.patch_size, self.patch_size))
+            
             crop = crop.squeeze(0)
-            # mask = mask.squeeze(0)
+            mask = mask.squeeze(0)
+            
+            # print(f'Crop shape: {crop.shape}')
+            # print(f'Mask shape: {mask.shape}')
         
         # Crop patches out of the full image
         else: # original code
