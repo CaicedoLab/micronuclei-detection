@@ -7,6 +7,7 @@ import evaluation
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import skimage
 
 import os
 import sys
@@ -30,7 +31,7 @@ SCALE_FACTOR = 1.0 # All images have been pre-scaled
 DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
 EDGES = True # if do LOO on v2 and v3 datasets only
-ARCHITECTURE = "Non-scaled leave one microscope out experiment"
+ARCHITECTURE = "2nd: Non-scaled leave one microscope out experiment"
 
 
 CURRENT_PATH = os.getcwd()
@@ -61,7 +62,12 @@ training_files = annot_files.copy()
 
 # remove subset from training_files (NEED TO FIX CODE: WRONG)
 df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei_no_rescale/metadata.csv')
-files_to_remove = df[df.datasets == subset].filenames.to_list()
+if subset == 'pilot_screen':
+    files_to_remove = df[df.datasets.isin(['pilot', 'screen'])].filenames.to_list()
+elif subset == 'hela_rpe1':
+    files_to_remove = df[df.datasets.isin(['HeLa', 'RPE1'])].filenames.to_list()
+else:
+    files_to_remove = df[df.datasets.isin([subset])].filenames.to_list()
 fn = lambda file: file.replace('phenotype.tif', 'phenotype_outlines.png')
 files_to_remove = [fn(file) for file in files_to_remove]
 new_training_files = [file for file in training_files if file not in files_to_remove]
@@ -156,7 +162,7 @@ for i in tqdm(range(len(validation_files))):
     validation_file = validation_files[i]
     imid = validation_file.split('.')[0]
     
-    ARCHITECTURE = f'(Nonscaled) Eval 47 images leaving {subset} out'
+    ARCHITECTURE = f'2nd: (Nonscaled) Eval 47 images leaving {subset} out'
     wandb.init(
         project='Best_Experiment',
         config={
@@ -187,13 +193,22 @@ for i in tqdm(range(len(validation_files))):
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
-    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE, dilation=DILATION)
+    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    np.save(filename, probabilities)
 
     mn_pred = probabilities[0,:,:] > THRESHOLD
-    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
-
+    labeled_mn = skimage.morphology.label(mn_pred)
+    labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
+    
+    # dilate the labeled mn
+    if DILATION > 0:
+        dilation = skimage.morphology.disk(DILATION)
+        labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
+        
+    evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    
+    # save labeled matrices
+    np.save(filename, labeled_mn)
 
 # release the resources
 torch.cuda.empty_cache()
