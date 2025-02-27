@@ -37,6 +37,7 @@ STEP = 16
 # STEP = 128
 EPOCHS = 20
 THRESHOLD = 0.5
+IoU_THRESHOLD = 0.1 # for micronuclei
 
 LOSS_FN = 'combined'
 LR = 1e-5
@@ -47,7 +48,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"2nd: Model v3 evaluation: fixed mnds"
+ARCHITECTURE = f"DinoMN - oversampled Model Evaluation"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -74,7 +75,7 @@ model = mnmodel.MicronucleiModel(
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('DinoMN.pth', model_dir=models_dir)
+model.load('DinoMN_oversampled.pth', model_dir=models_dir)
 
 
 # Log in WanDB
@@ -105,6 +106,7 @@ for i in tqdm(range(len(annot_files))):
             "patch_size":PATCH_SIZE,
             "weight_decay":WEIGHT_DECAY,
             "probability_threshold":THRESHOLD,
+            "IoU_threshold":IoU_THRESHOLD,
             "dilation":DILATION,
             "gaussian":'gaussian not need for prediction',
             'Number of validation images':len(annot_files)
@@ -133,7 +135,7 @@ for i in tqdm(range(len(annot_files))):
         dilation = skimage.morphology.disk(DILATION)
         labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
     
-    evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=IoU_THRESHOLD, report_obj='Micronuclei')
     
     # save labeled matrices
     np.save(filename, labeled_mn)

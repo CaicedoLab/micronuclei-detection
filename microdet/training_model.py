@@ -44,7 +44,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "model v3 - 128 res - fixed mnds - train on nonscaled data"
+ARCHITECTURE = "DinoMN: oversampling experiments"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -84,7 +84,8 @@ wandb.init(
         "probability_threshold":THRESHOLD,
         "gaussian":GAUSSIAN,
         'edges':EDGES,
-        'Number of training images':len(training_files)
+        'Number of training images':len(training_files),
+        'Number of validation images':len(annot_files)
     },
     name=f'model version 3'
 )
@@ -112,7 +113,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN_oversampled')
 
 # release the resources
 torch.cuda.empty_cache()

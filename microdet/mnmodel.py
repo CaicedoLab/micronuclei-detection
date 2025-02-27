@@ -156,7 +156,7 @@ class MicronucleiModel():
         # batch_size means number of images for each batch
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         
-        if self.need_validation_set: # case for train the best model with all 18 images
+        if self.need_validation_set:
             self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
         self.model = detection.DetectionModel(device=self.device, finetune=finetune)
@@ -183,6 +183,8 @@ class MicronucleiModel():
         running_loss = 0.
         last_loss = 0.
 
+        # For each training epoch, randomize the coordinates to reduce overfitting
+        # Avoid that model sees the same regions in each training epoch
         self.train_dataloader.dataset.randomize_patch_index()
         for i, data in enumerate(self.train_dataloader):
             x, y = data
@@ -209,6 +211,7 @@ class MicronucleiModel():
             
             # Report results
             running_loss += loss.item()
+            # print(f'{i} iteration: running loss: {running_loss:.3f}')
         return running_loss / i
     
     
