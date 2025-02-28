@@ -41,14 +41,15 @@ IoU_THRESHOLD = 0.1 # for micronuclei
 
 LOSS_FN = 'combined'
 LR = 1e-5
-BATCH_SIZE = 32
+# BATCH_SIZE = 32
+BATCH_SIZE = 16 
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"DinoMN - oversampled Model Evaluation"
+ARCHITECTURE = f"DinoMN Evaluation: transformer decoder (yes) oversample (no)"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -75,7 +76,7 @@ model = mnmodel.MicronucleiModel(
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('DinoMN_oversampled.pth', model_dir=models_dir)
+model.load('DinoMN.pth', model_dir=models_dir)
 
 
 # Log in WanDB

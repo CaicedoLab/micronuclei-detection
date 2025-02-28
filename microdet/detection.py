@@ -36,21 +36,6 @@ class DetectionModel(torch.nn.Module):
         # pretrained backbone has patch size 14 x 14, split into 14 row and columns
         self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
 
-        # self.decoder = torch.nn.Sequential(
-        #     # No activation after upscaling performs better
-        #     torch.nn.ConvTranspose2d(in_channels=384, out_channels=192, kernel_size=(2,2), stride=2),
-        #     torch.nn.Conv2d(in_channels=192, out_channels=192, kernel_size=(3,3), padding=(1,1)),
-        #     # Normalization here
-        #     torch.nn.LayerNorm([192, 64, 64]), # nn.LayerNorm([C, H, W])
-        #     torch.nn.ReLU(),
-            
-        #     torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2),
-        #     torch.nn.Conv2d(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1)),
-        #     # Normalization here
-        #     torch.nn.LayerNorm([96, 128, 128]), # best
-        #     torch.nn.ReLU(),
-        # )
-        # self.decoder.to(device)
         def conv_block(in_channels, out_channels, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128]):
             return torch.nn.Sequential(
                 torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
@@ -68,6 +53,14 @@ class DetectionModel(torch.nn.Module):
         self.block2.to(device)
         self.block3.to(device)
         
+        # here number of features (d_model) represents channels
+        self.decoder_layer1 = torch.nn.TransformerDecoderLayer(d_model=192, nhead=8, activation='relu', batch_first=True)  # Assuming d_model is 192
+        self.transformer_decoder1 = torch.nn.TransformerDecoder(self.decoder_layer1, num_layers=4)
+        self.transformer_decoder1.to(device)
+        
+        self.projection1 = torch.nn.Linear(384, 192)
+        self.projection1.to(device)
+        
         self.upscale2 = torch.nn.ConvTranspose2d(in_channels=192, out_channels=96, kernel_size=(2,2), stride=2)
         self.upscale2.to(device)
         self.block4 = conv_block(in_channels=96, out_channels=96, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128])
@@ -77,6 +70,9 @@ class DetectionModel(torch.nn.Module):
         self.block4.to(device)
         self.block5.to(device)
         self.block6.to(device)
+        
+        self.projection2 = torch.nn.Linear(192, 96)
+        self.projection2.to(device)
         
         # classification layer
         self.classifier = torch.nn.Conv2d(in_channels=96, out_channels=2, kernel_size=(1,1))
@@ -88,23 +84,41 @@ class DetectionModel(torch.nn.Module):
             x = torch.nn.functional.interpolate(x, (448,448))
             x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
             B,T,C = x.shape # Batch, Token size * Toekn size, Channel
-            W,H = 32,32
-            x = x.reshape(B,W,H,C).permute(0,3,1,2)
-            # x = self.decoder(x)
+            H,W = 32,32
             
+            memory = x # original image features 1,1024,384
+            x = x.reshape(B,H,W,C).permute(0,3,1,2) # 1,384,32,32
+            
+            # Pixel Decoder Block 1
             x = self.upscale1(x)
             residual1 = x
             x = self.block1(x)
             residual2 = x
             x = self.block2(x) + residual1
-            x = self.block3(x) + residual2
+            x = self.block3(x) + residual2 # x: 1,192,64,64
             
+            # Transformer Decoder Block 1
+            B,C,H,W = x.shape
+            target = x.reshape(B,H*W,C)
+            memory = self.projection1(memory)
+            transformer_x = self.transformer_decoder1(tgt=target, memory=memory)
+            # 1,4096,192
+            
+            # Pixel Decoder Block 2
             x = self.upscale2(x)
             residual3 = x
             x = self.block4(x)
             residual4 = x
             x = self.block5(x) + residual3
-            x = self.block6(x) + residual4
+            x = self.block6(x) + residual4 # x: 1,96,128,128
+            
+            
+            transformer_x = self.projection2(transformer_x)
+            transformer_x = transformer_x.reshape(B,96,H,W)
+            transformer_x = F.interpolate(x, (128,128))
+            
+            # Sum up information
+            x = x + transformer_x
             
             x = self.classifier(x)
         else:
@@ -112,23 +126,38 @@ class DetectionModel(torch.nn.Module):
                 x = torch.nn.functional.interpolate(x, (448,448))
                 x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
             B,T,C = x.shape # Batch, Token size * Toekn size, Channel
-            W,H = 32,32
-            x = x.reshape(B,W,H,C).permute(0,3,1,2)
-            # x = self.decoder(x)
-            
+            H,W = 32,32
+            memory = x # original image features
+            x = x.reshape(B,H,W,C).permute(0,3,1,2) # 1,384,32,32
+  
+            # Pixel Decoder Block 1
             x = self.upscale1(x)
             residual1 = x
             x = self.block1(x)
             residual2 = x
             x = self.block2(x) + residual1
-            x = self.block3(x) + residual2
+            x = self.block3(x) + residual2 # x: 1,192,64,64
             
+            # Transformer Decoder Block 1
+            B,C,H,W = x.shape
+            target = x.reshape(B,H*W,C)
+            memory = self.projection1(memory)
+            transformer_x = self.transformer_decoder1(tgt=target, memory=memory)
+            
+            # Pixel Decoder Block 2
             x = self.upscale2(x)
             residual3 = x
             x = self.block4(x)
             residual4 = x
             x = self.block5(x) + residual3
-            x = self.block6(x) + residual4
+            x = self.block6(x) + residual4 # x: 1,96,128,128
+            
+            transformer_x = self.projection2(transformer_x)
+            transformer_x = transformer_x.reshape(B,96,H,W)
+            transformer_x = F.interpolate(x, (128,128))
+            
+            # Sum up information
+            x = x + transformer_x
             
             x = self.classifier(x)
         

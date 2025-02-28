@@ -36,7 +36,8 @@ THRESHOLD = 0.5
 
 LOSS_FN = 'combined'
 LR = 1e-5
-BATCH_SIZE = 32
+# BATCH_SIZE = 32
+BATCH_SIZE = 16 # 32 will out of cuda memory in new added transformer block
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
@@ -44,7 +45,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "DinoMN: oversampling experiments"
+ARCHITECTURE = "DinoMN: transformer decoder (yes) oversample (no)"
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -113,7 +114,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='DinoMN_oversampled')
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
 
 # release the resources
 torch.cuda.empty_cache()
