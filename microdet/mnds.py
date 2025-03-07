@@ -140,15 +140,12 @@ class MicronucleiDataset(Dataset):
             H, W = self.images[imid]["image"].shape
             patches_per_image = (W // PS) * (H // PS)
             
-            # oversample images that have less micronuclei
-            subset = df.loc[df.filenames == imid + '.phenotype.tif', 'datasets'].iloc[0]
-            if subset in ['HeLa', 'RPE1']:
-                patches_per_image = patches_per_image * 7
-            elif subset in ['BBBC039', 'mnfinder_train']:
-                patches_per_image = patches_per_image * 5
-            
-            # if H < 1500 or W < 1500:
-            #     patches_per_image = patches_per_image * 100
+            # Oversample more crops
+            # subset = df.loc[df.filenames == imid + '.phenotype.tif', 'datasets'].iloc[0]
+            # if subset in ['HeLa', 'RPE1']:
+            #     patches_per_image = patches_per_image * 7
+            # elif subset in ['BBBC039', 'mnfinder_train']:
+            #     patches_per_image = patches_per_image * 5
                 
             # print(f'{imid}: height - {H}, width - {W}, patches - {patches_per_image}')
             X = np.random.randint(0, W - PS, patches_per_image)

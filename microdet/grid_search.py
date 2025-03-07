@@ -10,121 +10,199 @@ import mnds
 import mnmodel
 import evaluation
 import wandb
+from tqdm import tqdm
+import skimage
 
-SCALE_FACTOR = 1.0
+# Fixed Hyperparameters
 PATCH_SIZE = 256
 FEATURE_SIZE = 384
-STEP = 16
 EPOCHS = 20
 THRESHOLD = 0.5
+IoU_THRESHOLD = 0.1 # for micronuclei
+
+LOSS_FN = 'combined'
+FINETUNE = True
 WEIGHT_DECAY = 1e-6
+
+# Tunable Hyperparameters
+SCALE_FACTOR = 1.0
+GAUSSIAN = True
+EDGES = False
+ARCHITECTURE = "DinoMN: Grid Search with new architecture"
+
+STEP = 16
+DILATION = 2 # the best, only used in prediction
+OVERSAMPLE = 'NO'
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/dataset_v2'
-OUTPUT_DIR = "/model_output/nuclei_experiments/"
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
+OUTPUT_DIR = "/model_output/grid_search/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
+torch.set_num_threads(8)
 
+# if len(sys.argv) < 6:
+#     print("Use: python grid_search.py experiment_id loss_fn learning_rate batch_size finetune(True/False)")
+#     sys.exit()
 
-if len(sys.argv) < 6:
-    print("Use: python grid_search.py experiment_id loss_fn learning_rate batch_size finetune(True/False)")
+if len(sys.argv) < 4:
+    print("Use: python grid_search.py experiment_id learning_rate batch_size")
     sys.exit()
 
 
 # i = int(sys.argv[1])
 experiment_id = int(sys.argv[1])
-LOSS_FN = str(sys.argv[2])
-LR = float(sys.argv[3])
-BATCH_SIZE = int(sys.argv[4])
-FINETUNE = eval(sys.argv[5]) # dont use bool, only eval turns string to boolean!
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# gpu = sys.argv[7]
-# device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
+# LOSS_FN = str(sys.argv[2])
+LR = float(sys.argv[2])
+BATCH_SIZE = int(sys.argv[3])
+# FINETUNE = eval(sys.argv[5]) # dont use bool, only eval turns string to boolean!
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-os.makedirs('config_output')
 
 # Train
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 annot_files = [x for x in filelist if x.endswith('png')]
 annot_files.sort()
-annot_files = annot_files[0:10]
 
-# print(" *** ", validation_files, " *** ")
-# image_id = validation_files[0].split('.')[0].split('_')[-1]
-wandb.login(key='')
+training_files = annot_files.copy()
+
+# Validation Files
+validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
+validation_files = [file for file in validation_files if not file.startswith('.')]
+validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
+validation_files.sort()
+
+validation_filelist = validation_files.copy()
+
+
+key_file = open('./wandb_key.txt', 'r')
+key = key_file.readline()
+wandb.login(key=key)
 wandb.init(
-    project='grid_search_finetune',
+    project='Grid-Search-Micronuclei',
     config={
-        "architecture":"3 blocks of one 2x2 upscale and one 3x3 conv layers",
+        "architecture":ARCHITECTURE,
         "Loss": LOSS_FN,
+        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,
         "batch_size":BATCH_SIZE,
-        "learning_rate":LR,
+        "start_learning_rate":LR,
+        "lr_scheduler":"Cosine",
+        "scale_factor":'Trained on non-scaled images',
         "epochs": EPOCHS,
         "feature_size":FEATURE_SIZE,
         "patch_size":PATCH_SIZE,
         "weight_decay":WEIGHT_DECAY,
-        "probability_threshold":THRESHOLD
+        "probability_threshold":THRESHOLD,
+        "gaussian":GAUSSIAN,
+        'edges':EDGES,
+        'Number of training images':len(training_files),
+        'Number of validation images':len(validation_filelist),
+        'Oversample':OVERSAMPLE
     },
-    name=f'experiment{experiment_id}'
+    # concate lr and batch size here
+    name=f'experiment{experiment_id}: {LR}-{BATCH_SIZE}'
 )
 
-for i in range(len(annot_files)): # reduce the number of jobs on chtc to avoid crushing
-    training_files = annot_files.copy()
-    validation_files = [annot_files[i]]
-    del training_files[i]
+# Create model
+model = mnmodel.MicronucleiModel(
+    DIRECTORY, 
+    device, 
+    training_files=training_files, 
+    validation_files=validation_filelist,
+    patch_size=PATCH_SIZE,
+    scale_factor=SCALE_FACTOR,
+    edges=EDGES, # False, this will recover the input edges, reducing performance
+    gaussian=GAUSSIAN
+)
 
-    # Create model
-    model = mnmodel.MicronucleiModel(
-        DIRECTORY, 
-        device, 
-        training_files=training_files, 
-        validation_files=validation_files, 
-        patch_size=PATCH_SIZE,
-        scale_factor=SCALE_FACTOR,
-        edges=True
-    )
+# Train
+model.train(epochs=EPOCHS, 
+            batch_size=BATCH_SIZE, 
+            learning_rate=LR, 
+            loss_fn=LOSS_FN, 
+            finetune=FINETUNE,
+            weight_decay=WEIGHT_DECAY
+)
 
-    # Train
-    model.train(epochs=EPOCHS, 
-                batch_size=BATCH_SIZE, 
-                learning_rate=LR, 
-                loss_fn=LOSS_FN, 
-                output_dir=OUTPUT_DIR, 
-                finetune=FINETUNE,
-                weight_decay=WEIGHT_DECAY)
-
-    # Save
-    model.save(outdir=OUTPUT_DIR)
+# Save
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
 
 
-    # Validate
-    predictions_dir = DIRECTORY + OUTPUT_DIR
-    models_dir = OUTPUT_DIR
+################ Making Predictions ################
+# Validate
+predictions_dir = DIRECTORY + OUTPUT_DIR
+models_dir = OUTPUT_DIR
 
-    # Select image for analysis
+# Load model and compute probabilities
+model = mnmodel.MicronucleiModel(
+    data_dir=CURRENT_PATH + '/all_data_micronuclei_no_rescale/train',
+    device=device
+)
+# model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
+model.load('DinoMN.pth', model_dir=models_dir)
+
+for i in tqdm(range(len(validation_filelist))):
+# Select image for analysis
     validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
+    
+    wandb.init(
+        project='Grid-Search-Micronuclei',
+        config={
+            "architecture":f'experiment{experiment_id}: {LR}-{BATCH_SIZE}',
+            "Loss": LOSS_FN,
+            "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
+            "fine_tuning":FINETUNE,
+            "batch_size":BATCH_SIZE,
+            "learning_rate":LR,
+            "scale_factor":'Predict on images that are not scaled',
+            "epochs": EPOCHS,
+            'step':STEP,
+            "feature_size":FEATURE_SIZE,
+            "patch_size":PATCH_SIZE,
+            "weight_decay":WEIGHT_DECAY,
+            "probability_threshold":THRESHOLD,
+            "IoU_threshold":IoU_THRESHOLD,
+            "dilation":DILATION,
+            "gaussian":'gaussian not need for prediction',
+            'Number of validation images':len(annot_files)
+        },
+        name=f'{imid}',
+        reinit=True
+    )
+    
 
     # Load image and annotations
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
+    
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    mn_gt = mnds.read_micronuclei_masks(DIRECTORY, imid, SCALE_FACTOR)
+    mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    mn_gt = mn_gt > 0
 
-    # Load model and compute probabilities
-    model = mnmodel.MicronucleiModel(DIRECTORY, device, patch_size=PATCH_SIZE, edges=True)
-    model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    np.save(filename, probabilities)
+    
 
     mn_pred = probabilities[0,:,:] > THRESHOLD
-    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    labeled_mn = skimage.morphology.label(mn_pred)
+    labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
+    
+    # dilate the labeled mn
+    if DILATION > 0:
+        dilation = skimage.morphology.disk(DILATION)
+        labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
+        
 
-    # release the resources
-    torch.cuda.empty_cache()
-    wandb.finish()
+    evaluation.segmentation_report(imid=imid, predictions=mn_pred, gt=mn_gt, intersection_ratio=IoU_THRESHOLD, report_obj='Micronuclei')
+
+    # save labeled matrices
+    # np.save(filename, labeled_mn)
+    
+# release the resources
+torch.cuda.empty_cache()
+wandb.finish()

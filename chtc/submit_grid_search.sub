@@ -5,7 +5,7 @@ docker_image = yasuo0810/dinov2_chtc:v0.8
 
 # set the executable to run
 executable = ./grid_search.sh
-arguments = -i $(Process) -l $(loss_fn) -r $(learning_rate) -b $(batch_size) -f $(finetune)
+arguments = -i$(Process) -r $(learning_rate) -b $(batch_size)
 log = log/log$(Process).log
 error = error/job$(Process).err
 output = output/job$(Process).out
@@ -27,4 +27,4 @@ request_disk = 40GB
 
 Requirements = (Machine == "jcaicedogpu0001.chtc.wisc.edu")
 
-queue loss_fn,learning_rate,batch_size,finetune from configuration.txt
+queue learning_rate,batch_size from configuration.txt
