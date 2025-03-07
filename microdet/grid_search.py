@@ -178,6 +178,7 @@ for i in tqdm(range(len(validation_filelist))):
     
 
     # Load image and annotations
+    DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
     im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
