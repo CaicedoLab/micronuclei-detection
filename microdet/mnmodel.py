@@ -154,7 +154,7 @@ class MicronucleiModel():
         
     def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
         
-        print(f'Number of crops in training set: {len(self.training_set)}')
+        # print(f'Number of crops in training set: {len(self.training_set)}')
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         
         if self.need_validation_set:

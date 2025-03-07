@@ -148,7 +148,7 @@ model.load('DinoMN.pth', model_dir=models_dir)
 
 for i in tqdm(range(len(validation_filelist))):
 # Select image for analysis
-    validation_file = annot_files[i]
+    validation_file = validation_filelist[i]
     imid = validation_file.split('.')[0]
     
     wandb.init(
