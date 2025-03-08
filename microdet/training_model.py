@@ -36,8 +36,7 @@ THRESHOLD = 0.5
 
 LOSS_FN = 'combined'
 LR = 1e-5
-# BATCH_SIZE = 32
-BATCH_SIZE = 16 # 32 will out of cuda memory in new added transformer block
+BATCH_SIZE = 4 # best in the latest architecture
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
@@ -45,7 +44,9 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "DinoMN: transformer decoder (yes) oversample (no)"
+ARCHITECTURE = "DinoMN: transformer decoder (yes) oversample (yes)"
+
+OVERSAMPLE = 'NO' # if Yes, save model name as DinoMN_oversampled
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -86,7 +87,8 @@ wandb.init(
         "gaussian":GAUSSIAN,
         'edges':EDGES,
         'Number of training images':len(training_files),
-        'Number of validation images':len(annot_files)
+        'Number of validation images':len(validation_filelist),
+        'Oversample':OVERSAMPLE
     },
     name=f'model version 3'
 )
