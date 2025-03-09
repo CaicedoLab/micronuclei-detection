@@ -122,7 +122,11 @@ for i in tqdm(range(len(annot_files))):
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
 
+    # Document inference time
+    s = time.time()
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
+    e = time.time()
+    wandb.log({'Inference Time': e-s})
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
     # filename = predictions_dir + validation_file.replace('phenotype_outlines.tif','_probabilities') # no ground truth case
     
