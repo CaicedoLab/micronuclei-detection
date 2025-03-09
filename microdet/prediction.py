@@ -34,7 +34,6 @@ torch.set_num_threads(8)
 PATCH_SIZE = 256
 FEATURE_SIZE = 384
 STEP = 16
-# STEP = 128
 EPOCHS = 20
 THRESHOLD = 0.5
 IoU_THRESHOLD = 0.1 # for micronuclei
@@ -48,7 +47,7 @@ WEIGHT_DECAY = 1e-6
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"DinoMN Evaluation: transformer decoder (yes) oversample (yes)"
+ARCHITECTURE = f"DinoMN Evaluation: experiment8 with oversample"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")

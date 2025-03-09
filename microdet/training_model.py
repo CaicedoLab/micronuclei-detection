@@ -44,7 +44,7 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "DinoMN: transformer decoder (yes) oversample (yes)"
+ARCHITECTURE = "DinoMN: experiment8 with oversample"
 
 OVERSAMPLE = 'NO' # if Yes, save model name as DinoMN_oversampled
 
@@ -116,7 +116,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN_oversampled')
 
 # release the resources
 torch.cuda.empty_cache()
