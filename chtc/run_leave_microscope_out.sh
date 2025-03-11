@@ -20,7 +20,7 @@ while getopts ":i:" opt; do
 done
 shift $((OPTIND -1))
 
-mkdir non_oversampled_predictions
+mkdir oversampled_predictions
 output_file="prediction_$microscope.txt"
 python3 leave_microscope_out.py $microscope $gpu > $output_file
-cp $output_file non_oversampled_predictions/
+cp $output_file oversampled_predictions/
