@@ -5,6 +5,7 @@ import skimage
 import sklearn.metrics
 import torchvision
 import wandb
+from importlib.resources import files
 
 import numpy as np
 import pandas as pd
@@ -17,7 +18,7 @@ from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
 import sys
-import mnds as mnds
+import mnds
 import detection as detection
 import vision_transformer as vit
         
@@ -136,6 +137,8 @@ class MicronucleiModel():
                 patch_size=patch_size,
                 gaussian=gaussian
             )
+        else:
+            raise Exception("ERROR: No training images")
         
         if len(validation_files) > 0:
             self.validation_set = mnds.MicronucleiDataset(
@@ -278,7 +281,12 @@ class MicronucleiModel():
         self.model = detection.DetectionModel(device=self.device)
         self.model.load_state_dict(torch.load(model_file))
         self.model.to(self.device)
-        
+    
+    def load_pretrained_dinomn(self):
+        model_file = files("dinomn.models").joinpath("DinoMN_oversampled.pth")
+        self.model = detection.DetectionModel(device=self.device)
+        self.model.load_state_dict(torch.load(model_file))
+        self.model.to(self.device)
         
     def predict(self, image, stride=1, step=16, batch_size=512):
         classes = self.model.classifier.out_channels
@@ -303,6 +311,7 @@ class MicronucleiModel():
             
             pred0 = output.float()
             P = torch.reshape(pred0, (-1, classes, TOKENS_PER_PATCH, TOKENS_PER_PATCH))
+            # P.detach().cpu().numpy() might be better
             P = P.cpu().numpy()
             # print(f'P shape in batch_predict(): {P.shape}')
             
@@ -336,3 +345,13 @@ class MicronucleiModel():
         probabilities = probabilities/counts
         return probabilities
     
+
+def load_pretrained_dinomn():
+    '''
+    load pre-trained DinoMN model
+    '''
+    model_path = files("your_package.models").joinpath("my_model.pth")
+    
+    # model = detection.DetectionModel(device=self.device)
+    #     self.model.load_state_dict(torch.load(model_file))
+    #     self.model.to(self.device)
