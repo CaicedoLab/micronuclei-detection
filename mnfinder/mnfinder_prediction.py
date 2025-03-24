@@ -4,6 +4,7 @@ import sys
 sys.path.append('../')
 from pathlib import Path
 from tqdm import tqdm
+import time
 import numpy as np
 import pandas as pd
 from tifffile import tifffile
@@ -19,10 +20,10 @@ from skimage.exposure import rescale_intensity
 from skimage.segmentation import clear_border
 
 from mnfinder import MNClassifier
-import microdet.evaluation
-import microdet.mnds
+import src.dinomn.evaluation
+import src.dinomn.mnds
 
-ARCHITECTURE = "MNFinder predictions on 47 validation images aligned to mnfinder scales"
+ARCHITECTURE = "MNFinder predictions - Inference time"
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/validation_no_rescale/'
 
@@ -33,21 +34,16 @@ validation_files = [x for x in filelist if x.endswith('.phenotype.tif')]
 validation_files.sort()
 
 
-key_file = open('../microdet/wandb_key.txt', 'r')
+key_file = open('/scr/yren/wandb_key.txt', 'r')
 key = key_file.readline()
 wandb.login(key=key)
     
 attention_model = MNClassifier.get_model('Attention')
 
-df = pd.read_csv('/scr/yren/all_data_micronuclei/metadata.csv')
-data_mnfinder = df[df.datasets=='mnfinder_validation']
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
     
-    # SCALE_FACTOR = 1.0
-    mag = df.loc[df.filenames == validation_files[i], 'magnification'].iloc[0]
-    micron = df.loc[df.filenames == validation_files[i], 'micron'].iloc[0]
-    SCALE_FACTOR = round((20/11/(mag/micron)), 1)
+    SCALE_FACTOR = 1.0
    
     wandb.init(
         project='Best_Experiment',
@@ -60,17 +56,22 @@ for i in range(len(validation_files)):
         reinit=True
     )
 
-    im = microdet.mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
+    im = src.dinomn.mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     
+    # Document inference time
+    s = time.time()
     labels = attention_model.predict(im)
+    e = time.time()
+    wandb.log({'Inference Time': e-s})
+    
     micro_labels = labels[:,:,2]
 
-    save_path = DIRECTORY + 'predictions_scale_aligned_to_mnfinder/'
+    save_path = CURRENT_PATH + '/mnfinder_predictions/'
     np.save(save_path + imid + '._probabilities.npy', micro_labels)
 
     # evaluation
-    mn_gt = microdet.mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
-    microdet.evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    mn_gt = src.dinomn.mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    src.dinomn.evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
 
 # release the resources
 wandb.finish()

@@ -17,7 +17,7 @@ OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
-os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
+# os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 torch.set_num_threads(8)
 
 if len(sys.argv) < 2:
@@ -36,7 +36,7 @@ THRESHOLD = 0.5
 
 LOSS_FN = 'combined'
 LR = 1e-5
-BATCH_SIZE = 4 # best in the latest architecture
+BATCH_SIZE = 4 # best training batch size
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
@@ -46,7 +46,7 @@ GAUSSIAN = True
 EDGES = False
 ARCHITECTURE = "DinoMN: experiment8 with oversample"
 
-OVERSAMPLE = 'NO' # if Yes, save model name as DinoMN_oversampled
+OVERSAMPLE = 'Yes' # if Yes, save model name as DinoMN_oversampled
 
 # Train Files
 files = os.listdir(DIRECTORY)
@@ -75,7 +75,7 @@ wandb.init(
         "Loss": LOSS_FN,
         "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
         "fine_tuning":FINETUNE,
-        "batch_size":BATCH_SIZE,
+        "training_batch_size":BATCH_SIZE,
         "start_learning_rate":LR,
         "lr_scheduler":"Cosine",
         "scale_factor":'Trained on non-scaled images',
@@ -90,7 +90,7 @@ wandb.init(
         'Number of validation images':len(validation_filelist),
         'Oversample':OVERSAMPLE
     },
-    name=f'model version 3'
+    name=f'model version 3 (test new predict())'
 )
 
 # Create model

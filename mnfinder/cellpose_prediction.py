@@ -4,15 +4,16 @@ from cellpose.io import imread
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import time
 import sys
 sys.path.append('../')
 import skimage
 import wandb
 
-import microdet.evaluation
-import microdet.mnds
+import src.dinomn.evaluation
+import src.dinomn.mnds
 
-ARCHITECTURE = "Cellpose predictions on 47 nonscaled validation images"
+ARCHITECTURE = "Cellpose predictions - Inference time"
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/validation_no_rescale/'
 
@@ -23,7 +24,7 @@ filelist = [file for file in files if not file.startswith('.')] # avoid files st
 validation_files = [x for x in filelist if x.endswith('.phenotype.tif')]
 validation_files.sort()
 
-key_file = open('../microdet/wandb_key.txt', 'r')
+key_file = open('/scr/yren/wandb_key.txt', 'r')
 key = key_file.readline()
 wandb.login(key=key)
 
@@ -48,7 +49,12 @@ for i in range(len(validation_files)):
     )
     
     im = skimage.io.imread(DIRECTORY + validation_files[i])
+    
+    # Document inference time
+    s = time.time()
     masks, flows, styles, diams = model.eval(im, diameter=DIAM, channels=channels)
+    e = time.time()
+    wandb.log({'Inference Time': e-s})
     
     masks = np.asarray(masks, dtype='uint16')
     
@@ -65,12 +71,12 @@ for i in range(len(validation_files)):
     for i in micron_labels:
         micro_mask += (labels == i)
         
-    save_path = DIRECTORY + 'cellpose_nonscaled_predictions/'
+    save_path = CURRENT_PATH + '/cellpose_predictions/'
     np.save(save_path + imid + '._probabilities.npy', micro_mask)
     
     # evaluation
-    mn_gt = microdet.mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
-    microdet.evaluation.segmentation_report(imid=imid, predictions=micro_mask, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    mn_gt = src.dinomn.mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    src.dinomn.evaluation.segmentation_report(imid=imid, predictions=micro_mask, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
 
 # release the resources
 wandb.finish()

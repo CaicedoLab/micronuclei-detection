@@ -137,8 +137,6 @@ class MicronucleiModel():
                 patch_size=patch_size,
                 gaussian=gaussian
             )
-        else:
-            raise Exception("ERROR: No training images")
         
         if len(validation_files) > 0:
             self.validation_set = mnds.MicronucleiDataset(
@@ -216,7 +214,7 @@ class MicronucleiModel():
             # Report results
             running_loss += loss.item()
             # print(f'{i} iteration: running loss: {running_loss:.3f}')
-        return running_loss / i
+        return running_loss / (i+1)
     
     
     def train(self, epochs, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
@@ -257,7 +255,7 @@ class MicronucleiModel():
 
             # log metrics to wandb
             if self.need_validation_set:
-                wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss})
+                wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss}, commit=False) # avoid logging more steps than num of epochs
             else:
                 wandb.log({"Train_loss":avg_loss})
 
@@ -287,6 +285,20 @@ class MicronucleiModel():
         self.model = detection.DetectionModel(device=self.device)
         self.model.load_state_dict(torch.load(model_file))
         self.model.to(self.device)
+        
+    
+    def _generate_fixed_coord(self, im, step, patch_size):
+        C,H,W = im.shape
+        X = list(range(0,W-patch_size+1, step))
+        Y = list(range(0,H-patch_size+1, step))
+        patches_per_image = len(X) * len(Y)
+        X,Y = np.meshgrid(X,Y, indexing='ij')
+        X = X.reshape((patches_per_image,))
+        Y = Y.reshape((patches_per_image,))
+        coord = np.stack((Y,X)).T
+        
+        return coord
+        
         
     def predict(self, image, stride=1, step=16, batch_size=512):
         classes = self.model.classifier.out_channels
@@ -324,20 +336,38 @@ class MicronucleiModel():
             coords = []
 
 
-        with torch.no_grad():
-            for i in tqdm(range(0,image.shape[0]-self.patch_size+1, step)):
-                a = i // stride
-                for j in range(0,image.shape[1]-self.patch_size+1, step):
-                    b = j // stride
-                    vin = mnds.patch_to_rgb(image[i:i+self.patch_size,j:j+self.patch_size])
-                    batch.append(vin[None,:,:,:])
-                    coords.append({"i":i, "j":j, "a":a, "b":b})
+        # with torch.no_grad():
+        #     image = mnds.patch_to_rgb(image)
+        #     for i in tqdm(range(0,image.shape[0]-self.patch_size+1, step)):
+        #         a = i // stride
+        #         for j in range(0,image.shape[1]-self.patch_size+1, step):
+        #             b = j // stride
+        #             vin = image[i:i+self.patch_size,j:j+self.patch_size]
+        #             batch.append(vin[None,:,:,:])
+        #             coords.append({"i":i, "j":j, "a":a, "b":b})
 
-                    if len(batch) == batch_size:
+        #             if len(batch) == batch_size:
+        #                 # Get predictions
+        #                 batch_predict(batch, coords)
+        #                 batch, coords = [], []
+        
+        with torch.no_grad(): # turn off gradients for inference
+            image = mnds.patch_to_rgb(image)
+            C = self._generate_fixed_coord(im=image, step=step, patch_size=self.patch_size)
+            
+            for i in range(len(C)): # loop through coordinates
+                y,x = C[i,:]
+                coords.append({'a':y, 'b':x})
+                
+                crop = image[:,y:y+self.patch_size,x:x+self.patch_size]
+                batch.append(crop[None,:,:,:])
+                
+                if len(batch) == batch_size:
                         # Get predictions
                         batch_predict(batch, coords)
                         batch, coords = [], []
-
+            
+            # remaining batches that is lower than specified batch size
             if len(batch) > 0:
                 batch_predict(batch, coords)
                 batch, coords = [], []

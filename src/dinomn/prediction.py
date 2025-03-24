@@ -15,7 +15,7 @@ import wandb
 from tqdm import tqdm
 
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import mnds
 import mnmodel
@@ -27,7 +27,7 @@ OUTPUT_DIR = "/model_output/output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
-os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
+# os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 torch.set_num_threads(8)
 
 # Fixed Hyperparameters
@@ -40,14 +40,14 @@ IoU_THRESHOLD = 0.1 # for micronuclei
 
 LOSS_FN = 'combined'
 LR = 1e-5
-BATCH_SIZE = 4 # best in the latest architecture
+PREDICTION_BATCH = 350
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"DinoMN Evaluation: experiment8 with oversample"
+ARCHITECTURE = f"DinoMN Evaluation: experiment8 with oversample & optimized predict()"
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -96,7 +96,7 @@ for i in tqdm(range(len(annot_files))):
             "Loss": LOSS_FN,
             "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
             "fine_tuning":FINETUNE,
-            "batch_size":BATCH_SIZE,
+            "prediction_batch_size":PREDICTION_BATCH,
             "learning_rate":LR,
             "scale_factor":'Predict on images that are not scaled',
             "epochs": EPOCHS,
@@ -120,10 +120,10 @@ for i in tqdm(range(len(annot_files))):
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
     mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
-
+    
     # Document inference time
     s = time.time()
-    probabilities = model.predict(im, stride=1, step=STEP, batch_size=BATCH_SIZE)
+    probabilities = model.predict(im, stride=1, step=STEP, batch_size=PREDICTION_BATCH) # has model.eval() & with torch.no_grad()
     e = time.time()
     wandb.log({'Inference Time': e-s})
     filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
