@@ -1,0 +1,30 @@
+# Submit file
+universe = docker
+# link to self-built docker image
+docker_image = yasuo0810/dinov2_chtc:v0.8
+
+
+executable = ./run_leave_one_out.sh
+arguments = -i $(cell_line)
+log = log/log_best_$(Cluster)_$(Process).log
+error = error/job_best_$(Cluster)_$(Process).err
+output = output/job_best_$(Cluster)_$(Process).out
+
+transfer_input_files = dinomn.tar.gz
+transfer_output_files = dinomn/predictions
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+request_cpus = 8
+request_gpus = 1
+
++WantGPULab = true
++GPUJobLength = "medium"
+
+request_memory = 60GB
+request_disk = 60GB
+
+Requirements =  Machine == ("jcaicedogpu0001.chtc.wisc.edu")
+
+queue cell_line from cell_lines.txt
