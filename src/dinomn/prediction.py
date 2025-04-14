@@ -17,9 +17,9 @@ from tqdm import tqdm
 import numpy as np
 # import matplotlib.pyplot as plt
 
-import mnds
-import mnmodel
-import evaluation
+from . import mnds
+from . import mnmodel
+from . import evaluation
 
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'

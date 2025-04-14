@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dinomn"]
+
+[tool.hatch.build]
+include = [
+    "dinomn/**",            # Include all package files
+    "dinomn/models/*.pth",  # Ensure model files are included
+]
+
+[project]
+name = "dinomn"
+version = "0.0.2.5"
+authors = [
+    {name="Yifan Ren", email="yren86@wisc.edu"},
+    {name="Vidit Agrawal", email="vidit.agrawal@wisc.edu"},
+    {name="Louise Morlot", email="louise.morlot@cpr.ku.dk"},
+    {name="Owen Andrews", email="oandrews@broadinstitute.org"},
+    {name="Emil Peter Thrane Hertz", email="emil.hertz@cpr.ku.dk"},
+    {name="Juan Caicedo", email="juan.caicedo@wisc.edu"}
+]
+description = "DinoMN: accurate and robust micronuclei segmentation model built upon Dinov2 backbone"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torch",
+    "torchvision",
+    "scikit-image",
+    "scikit-learn",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pillow",
+    "scipy",
+    "timm",
+    "tqdm"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/CaicedoLab/micronuclei-detection/tree/main"
+Issues = "https://github.com/CaicedoLab/micronuclei-detection/issues"

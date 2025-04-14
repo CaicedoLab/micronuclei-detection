@@ -5,10 +5,11 @@ import os
 import sys
 import torch
 import numpy as np
-import mnds
-import mnmodel
-import evaluation
 import wandb
+
+from . import mnds
+from . import mnmodel
+from . import evaluation
 
 
 CURRENT_PATH = os.getcwd()

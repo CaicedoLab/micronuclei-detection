@@ -18,9 +18,9 @@ from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
 import sys
-import mnds
-import detection as detection
-import vision_transformer as vit
+from . import mnds
+from . import detection as detection
+from . import vision_transformer as vit
         
         
 class DiceLoss(torch.nn.Module):
@@ -381,6 +381,7 @@ def load_pretrained_dinomn():
     load pre-trained DinoMN model
     '''
     model_path = files("your_package.models").joinpath("my_model.pth")
+    print(f'Model path: {model_path}')
     
     # model = detection.DetectionModel(device=self.device)
     #     self.model.load_state_dict(torch.load(model_file))
