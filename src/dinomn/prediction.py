@@ -33,28 +33,26 @@ torch.set_num_threads(8)
 # Fixed Hyperparameters
 PATCH_SIZE = 256
 FEATURE_SIZE = 384
-STEP = 16
+STEP = 32 # 32 & 64 are the best
 EPOCHS = 20
 THRESHOLD = 0.5
 IoU_THRESHOLD = 0.1 # for micronuclei
 
 LOSS_FN = 'combined'
 LR = 1e-5
-PREDICTION_BATCH = 350
+PREDICTION_BATCH = 4
 FINETUNE = True
 WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
 DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f"DinoMN Evaluation: experiment8 with oversample & optimized predict()"
+ARCHITECTURE = f'Step{STEP} Experiment'
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
     sys.exit()
 
-
-# i = int(sys.argv[1])
 gpu = sys.argv[1] # which gpu
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 
