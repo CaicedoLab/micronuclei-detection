@@ -15,7 +15,7 @@ import src.dinomn.mnds
 
 ARCHITECTURE = "Cellpose predictions - Inference time"
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/validation_no_rescale/'
+DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation/'
 
 SCALE_FACTOR = 1.0
 
