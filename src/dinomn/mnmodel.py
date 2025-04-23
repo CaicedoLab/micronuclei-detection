@@ -18,9 +18,9 @@ from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
 import sys
-from . import mnds
-from . import detection as detection
-from . import vision_transformer as vit
+import mnds
+import detection as detection
+import vision_transformer as vit
         
         
 class DiceLoss(torch.nn.Module):

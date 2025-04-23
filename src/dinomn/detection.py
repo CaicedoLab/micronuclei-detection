@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from . import vision_transformer as vit
+import vision_transformer as vit
 
 class TruncViT(vit.VisionTransformer):
     

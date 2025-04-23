@@ -17,9 +17,9 @@ from tqdm import tqdm
 import numpy as np
 # import matplotlib.pyplot as plt
 
-from . import mnds
-from . import mnmodel
-from . import evaluation
+import mnds
+import mnmodel
+import evaluation
 
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
@@ -33,7 +33,7 @@ torch.set_num_threads(8)
 # Fixed Hyperparameters
 PATCH_SIZE = 256
 FEATURE_SIZE = 384
-STEP = 32 # 32 & 64 are the best
+STEP = 64 # 64 is the best
 EPOCHS = 20
 THRESHOLD = 0.5
 IoU_THRESHOLD = 0.1 # for micronuclei
