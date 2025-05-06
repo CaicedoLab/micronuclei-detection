@@ -334,22 +334,6 @@ class MicronucleiModel():
                 probabilities[:,y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += P[c]
                 counts[y:y+TOKENS_PER_PATCH,x:x+TOKENS_PER_PATCH] += ones
             coords = []
-
-
-        # with torch.no_grad():
-        #     image = mnds.patch_to_rgb(image)
-        #     for i in tqdm(range(0,image.shape[0]-self.patch_size+1, step)):
-        #         a = i // stride
-        #         for j in range(0,image.shape[1]-self.patch_size+1, step):
-        #             b = j // stride
-        #             vin = image[i:i+self.patch_size,j:j+self.patch_size]
-        #             batch.append(vin[None,:,:,:])
-        #             coords.append({"i":i, "j":j, "a":a, "b":b})
-
-        #             if len(batch) == batch_size:
-        #                 # Get predictions
-        #                 batch_predict(batch, coords)
-        #                 batch, coords = [], []
         
         with torch.no_grad(): # turn off gradients for inference
             image = mnds.patch_to_rgb(image)
@@ -375,14 +359,3 @@ class MicronucleiModel():
         probabilities = probabilities/counts
         return probabilities
     
-
-def load_pretrained_dinomn():
-    '''
-    load pre-trained DinoMN model
-    '''
-    model_path = files("your_package.models").joinpath("my_model.pth")
-    print(f'Model path: {model_path}')
-    
-    # model = detection.DetectionModel(device=self.device)
-    #     self.model.load_state_dict(torch.load(model_file))
-    #     self.model.to(self.device)

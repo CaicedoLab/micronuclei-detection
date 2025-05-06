@@ -1,30 +1,30 @@
 import torch
 import torch.nn.functional as F
 
-import vision_transformer as vit
+# import vision_transformer as vit
 
-class TruncViT(vit.VisionTransformer):
+# class TruncViT(vit.VisionTransformer):
     
-    def __init__(self, img_size=[224], patch_size=16, in_chans=3, num_classes=0, embed_dim=768, depth=12,
-                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0., norm_layer=torch.nn.LayerNorm, **kwargs):
-        super().__init__(img_size, patch_size, in_chans, num_classes, embed_dim, depth,
-                 num_heads, mlp_ratio, qkv_bias, qk_scale, drop_rate, attn_drop_rate,
-                 drop_path_rate, norm_layer)
-        del(self.head)
+#     def __init__(self, img_size=[224], patch_size=16, in_chans=3, num_classes=0, embed_dim=768, depth=12,
+#                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
+#                  drop_path_rate=0., norm_layer=torch.nn.LayerNorm, **kwargs):
+#         super().__init__(img_size, patch_size, in_chans, num_classes, embed_dim, depth,
+#                  num_heads, mlp_ratio, qkv_bias, qk_scale, drop_rate, attn_drop_rate,
+#                  drop_path_rate, norm_layer)
+#         del(self.head)
 
-    def forward(self, x):
-        x = self.prepare_tokens(x)
-        for blk in self.blocks:
-            x = blk(x)
-        x = self.norm(x)
-        return x#[:, 0]
+#     def forward(self, x):
+#         x = self.prepare_tokens(x)
+#         for blk in self.blocks:
+#             x = blk(x)
+#         x = self.norm(x)
+#         return x#[:, 0]
     
-def trunc_vit_tiny(patch_size=16, **kwargs):
-    model = TruncViT(
-        patch_size=patch_size, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4,
-        qkv_bias=True, norm_layer=vit.partial(torch.nn.LayerNorm, eps=1e-6), **kwargs)
-    return model
+# def trunc_vit_tiny(patch_size=16, **kwargs):
+#     model = TruncViT(
+#         patch_size=patch_size, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4,
+#         qkv_bias=True, norm_layer=vit.partial(torch.nn.LayerNorm, eps=1e-6), **kwargs)
+#     return model
 
 class DetectionModel(torch.nn.Module):
     
