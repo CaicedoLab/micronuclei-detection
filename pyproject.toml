@@ -2,15 +2,12 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["dinomn"]
-
 [tool.hatch.build]
-sources = {dinomn = "src/dinomn"}
+packages = ["dinomn"]
 
 [project]
 name = "dinomn"
-version = "0.0.2.6"
+version = "0.0.3.8"
 authors = [
     {name="Yifan Ren", email="yren86@wisc.edu"},
     {name="Vidit Agrawal", email="vidit.agrawal@wisc.edu"},
@@ -19,9 +16,9 @@ authors = [
     {name="Emil Peter Thrane Hertz", email="emil.hertz@cpr.ku.dk"},
     {name="Juan Caicedo", email="juan.caicedo@wisc.edu"}
 ]
-description = "DinoMN: accurate and robust micronuclei segmentation model built upon Dinov2 backbone"
+description = "DinoMN: test"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "torch",
     "torchvision",
@@ -33,7 +30,8 @@ dependencies = [
     "pillow",
     "scipy",
     "timm",
-    "tqdm"
+    "tqdm",
+    'wandb',
 ]
 
 classifiers = [
