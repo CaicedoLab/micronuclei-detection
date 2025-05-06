@@ -117,7 +117,7 @@ model.train(epochs=EPOCHS,
 
 
 # Save
-model.save(outdir=OUTPUT_DIR, model_name='DinoMN_oversampled')
+model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
 
 # release the resources
 torch.cuda.empty_cache()

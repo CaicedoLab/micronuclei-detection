@@ -72,7 +72,7 @@ model = mnmodel.MicronucleiModel(
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('DinoMN_oversampled.pth', model_dir=models_dir)
+model.load('DinoMN.pth', model_dir=models_dir)
 
 
 # Log in WanDB
