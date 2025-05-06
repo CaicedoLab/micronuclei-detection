@@ -279,12 +279,6 @@ class MicronucleiModel():
         self.model = detection.DetectionModel(device=self.device)
         self.model.load_state_dict(torch.load(model_file))
         self.model.to(self.device)
-    
-    def load_pretrained_dinomn(self):
-        model_file = files("dinomn.models").joinpath("DinoMN_oversampled.pth")
-        self.model = detection.DetectionModel(device=self.device)
-        self.model.load_state_dict(torch.load(model_file))
-        self.model.to(self.device)
         
     
     def _generate_fixed_coord(self, im, step, patch_size):
