@@ -327,7 +327,6 @@ class MicronucleiModel():
             P = P.cpu().numpy()
             # print(f'P shape in batch_predict(): {P.shape}')
             
-            
             for c in range(len(coords)):
                 y = coords[c]["a"]
                 x = coords[c]["b"]
