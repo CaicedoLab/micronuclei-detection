@@ -1,9 +1,9 @@
 import os
 import sys
 import torch
-import mnmodel
-import mnds
-import evaluation
+from dinomn import mnds
+from dinomn import mnmodel
+from dinomn import evaluation
 import numpy as np
 import pandas as pd
 from tqdm import tqdm

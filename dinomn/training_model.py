@@ -7,9 +7,9 @@ import torch
 import numpy as np
 import wandb
 
-import mnds
-import mnmodel
-import evaluation
+from dinomn import mnds
+from dinomn import mnmodel
+from dinomn import evaluation
 
 
 CURRENT_PATH = os.getcwd()

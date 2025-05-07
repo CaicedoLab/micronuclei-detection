@@ -6,9 +6,9 @@ import os
 import sys
 import torch
 import numpy as np
-import mnds
-import mnmodel
-import evaluation
+from dinomn import mnds
+from dinomn import mnmodel
+from dinomn import evaluation
 import wandb
 from tqdm import tqdm
 import skimage

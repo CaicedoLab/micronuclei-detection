@@ -5,7 +5,6 @@ import skimage
 import sklearn.metrics
 import torchvision
 import wandb
-from huggingface_hub import PyTorchModelHubMixin
 
 import numpy as np
 import pandas as pd
@@ -18,9 +17,9 @@ from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
 import sys
-import mnds
-import detection as detection
-import vision_transformer as vit
+from dinomn import mnds
+from dinomn import detection as detection
+from dinomn import vision_transformer as vit
         
         
 class DiceLoss(torch.nn.Module):
@@ -117,10 +116,10 @@ class CombinedFocalDiceLoss(torch.nn.Module):
         
         
 
-class MicronucleiModel(torch.nn.Module, PyTorchModelHubMixin):
-    repo_url = "yifanren/DinoMN"
-    pipeline_tag = "DinoMN-Model"
-    license = "mit"
+class MicronucleiModel(torch.nn.Module):
+    # repo_url = "yifanren/DinoMN"
+    # pipeline_tag = "DinoMN-Model"
+    # license = "mit"
     
     def __init__(self, device, data_dir='', training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
         super().__init__()

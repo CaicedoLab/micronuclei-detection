@@ -13,9 +13,9 @@ import skimage
 import numpy as np
 import matplotlib.pyplot as plt
 
-import mnds
-import mnmodel
-import evaluation
+from dinomn import mnds
+from dinomn import mnmodel
+from dinomn import evaluation
 
 
 # In[2]:
