@@ -7,7 +7,7 @@ packages = ["dinomn"]
 
 [project]
 name = "dinomn"
-version = "0.0.3.8"
+version = "0.0.3.9"
 authors = [
     {name="Yifan Ren", email="yren86@wisc.edu"},
     {name="Vidit Agrawal", email="vidit.agrawal@wisc.edu"},
@@ -31,7 +31,7 @@ dependencies = [
     "scipy",
     "timm",
     "tqdm",
-    'wandb',
+    "wandb"
 ]
 
 classifiers = [
