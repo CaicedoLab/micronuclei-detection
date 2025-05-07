@@ -1,14 +1,10 @@
 import os
 import time
 import torch
-import skimage
-import sklearn.metrics
-import torchvision
 import wandb
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import torch.nn.functional as F
 
 from torch.utils.data import Dataset
@@ -19,7 +15,6 @@ from tqdm import tqdm
 import sys
 from dinomn import mnds
 from dinomn import detection as detection
-from dinomn import vision_transformer as vit
         
         
 class DiceLoss(torch.nn.Module):
