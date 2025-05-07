@@ -72,7 +72,8 @@ model = mnmodel.MicronucleiModel(
     device=device
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
-model.load('DinoMN.pth', model_dir='/scr/yren/best_model/micronuclei_detection_project/')
+model_name = 'DinoMN.pth'
+model.load(model_path=f'/scr/yren/best_model/micronuclei_detection_project/{model_name}')
 
 
 # Log in WanDB

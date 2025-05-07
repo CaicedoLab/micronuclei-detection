@@ -122,7 +122,7 @@ class MicronucleiModel(torch.nn.Module, PyTorchModelHubMixin):
     pipeline_tag = "DinoMN-Model"
     license = "mit"
     
-    def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
+    def __init__(self, device, data_dir='', training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
         super().__init__()
         
         self.data_dir = data_dir
@@ -279,10 +279,10 @@ class MicronucleiModel(torch.nn.Module, PyTorchModelHubMixin):
         torch.save(self.model.state_dict(), output_file)
 
         
-    def load(self, model_name, model_dir=''):
-        model_file = model_dir + model_name
+    def load(self, model_path):
+        # model_file = model_dir + model_name
         self.model = detection.DetectionModel(device=self.device)
-        self.model.load_state_dict(torch.load(model_file))
+        self.model.load_state_dict(torch.load(model_path))
         self.model.to(self.device)
         
     
