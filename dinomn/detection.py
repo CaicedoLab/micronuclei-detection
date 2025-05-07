@@ -29,7 +29,7 @@ import torch.nn.functional as F
 class DetectionModel(torch.nn.Module):
     
     def __init__(self, device, stride=8, finetune=False):
-        super(DetectionModel, self).__init__()
+        super().__init__()
         
         self.finetune = finetune
         

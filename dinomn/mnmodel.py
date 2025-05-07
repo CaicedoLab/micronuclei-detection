@@ -5,7 +5,7 @@ import skimage
 import sklearn.metrics
 import torchvision
 import wandb
-from importlib.resources import files
+from huggingface_hub import PyTorchModelHubMixin
 
 import numpy as np
 import pandas as pd
@@ -117,9 +117,14 @@ class CombinedFocalDiceLoss(torch.nn.Module):
         
         
 
-class MicronucleiModel():
+class MicronucleiModel(torch.nn.Module, PyTorchModelHubMixin):
+    repo_url = "yifanren/DinoMN"
+    pipeline_tag = "DinoMN-Model"
+    license = "mit"
     
     def __init__(self, data_dir, device, training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
+        super().__init__()
+        
         self.data_dir = data_dir
         self.device = device
         self.validation_files = validation_files
@@ -274,8 +279,8 @@ class MicronucleiModel():
         torch.save(self.model.state_dict(), output_file)
 
         
-    def load(self, model_name, model_dir="models/"):
-        model_file = self.data_dir + model_dir + model_name
+    def load(self, model_name, model_dir=''):
+        model_file = model_dir + model_name
         self.model = detection.DetectionModel(device=self.device)
         self.model.load_state_dict(torch.load(model_file))
         self.model.to(self.device)
