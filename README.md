@@ -11,7 +11,6 @@ pip install dinomn
 ```python
 import torch
 from dinomn import mnmodel
-from dinomn import evaluation
 from huggingface_hub import hf_hub_download
 
 model_path = hf_hub_download(repo_id="yifanren/DinoMN", filename="DinoMN.pth")
@@ -35,4 +34,17 @@ probabilities = model.predict(im, stride=1, step=STEP, batch_size=PREDICTION_BAT
 
 mn_predictions = probabilities[0,:,:] > THRESHOLD
 nuclei_predictions = probabilities[1,:,:] > THRESHOLD
+```
+
+# Evaluation
+```python
+import skimage
+from dinomn import evaluation
+
+# Post-processing
+dilation = skimage.morphology.disk(2)
+mn_predictions = skimage.morphology.dilaion(mn_predictions, dilation)
+mn_gt = skimage.io.imread(your_annotated_image_path) # make sure the annotations are masks
+
+evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
 ```
