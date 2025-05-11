@@ -42,9 +42,6 @@ import skimage
 from dinomn import evaluation
 
 # Post-processing
-dilation = skimage.morphology.disk(2)
-mn_predictions = skimage.morphology.dilaion(mn_predictions, dilation)
 mn_gt = skimage.io.imread(your_annotated_image_path) # make sure the annotations are masks
-
 evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
 ```
