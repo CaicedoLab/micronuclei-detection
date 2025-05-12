@@ -6,6 +6,7 @@
 
 import os
 import sys
+sys.path.append('../')
 import time
 import skimage.morphology
 import torch
@@ -22,9 +23,9 @@ import numpy as np
 # from dinomn import mnmodel
 # from dinomn import evaluation
 
-import mnds
-import mnmodel
-import evaluation
+import dinomn.mnds as mnds
+import dinomn.mnmodel as mnmodel
+import dinomn.evaluation as evaluation
 
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'

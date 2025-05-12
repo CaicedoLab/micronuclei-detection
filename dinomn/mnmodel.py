@@ -16,8 +16,10 @@ from tqdm import tqdm
 # from dinomn import mnds
 # from dinomn import detection as detection
 
-import mnds
-import detection as detection
+import sys
+sys.path.append('../')
+import dinomn.mnds as mnds
+import dinomn.detection as detection
 
         
 class DiceLoss(torch.nn.Module):

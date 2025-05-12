@@ -8,11 +8,12 @@ import skimage
 
 import os
 import sys
+sys.append('../')
 import wandb
 
-import mnds
-import mnmodel
-import evaluation
+import dinomn.mnds as mnds
+import dinomn.mnmodel as mnmodel
+import dinomn.evaluation as evaluation
 
 # Fixed Hyperparameters
 PATCH_SIZE = 256

@@ -3,13 +3,13 @@
 
 import os
 import sys
+sys.path.append('../')
 import torch
 import numpy as np
 import wandb
 
-from dinomn import mnds
-from dinomn import mnmodel
-from dinomn import evaluation
+import dinomn.mnmodel as mnmodel
+
 
 
 CURRENT_PATH = os.getcwd()
