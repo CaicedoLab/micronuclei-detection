@@ -63,9 +63,9 @@ val_loader = sam_training.default_sam_loader(
     sampler=sampler
 )
 
-n_objects_per_batch = 15  # the number of objects per batch that will be sampled
+n_objects_per_batch = 10  # the number of objects per batch that will be sampled
 device = "cuda" if torch.cuda.is_available() else "cpu"  # the device/GPU used for training
-n_epochs = 20  # how long we train (in epochs)
+n_epochs = 5  # how long we train (in epochs)
 
 # The model_type determines which base model is used to initialize the weights that are finetuned.
 # We use vit_b here because it can be trained faster. Note that vit_h usually yields higher quality results.
