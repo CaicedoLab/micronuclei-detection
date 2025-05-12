@@ -17,9 +17,14 @@ from tqdm import tqdm
 import numpy as np
 # import matplotlib.pyplot as plt
 
-from dinomn import mnds
-from dinomn import mnmodel
-from dinomn import evaluation
+# pip packaging
+# from dinomn import mnds
+# from dinomn import mnmodel
+# from dinomn import evaluation
+
+import mnds
+import mnmodel
+import evaluation
 
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
@@ -46,8 +51,7 @@ WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
-DILATION = 2 # the best, only used in prediction
-ARCHITECTURE = f'Step{STEP} Experiment'
+ARCHITECTURE = f'Without dilation Experiment'
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -68,12 +72,12 @@ models_dir = OUTPUT_DIR
 
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
-    data_dir=CURRENT_PATH + '/all_data_micronuclei_no_rescale/train',
-    device=device
+    device=device,
+    data_dir=CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
 )
 # model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
 model_name = 'DinoMN.pth'
-model.load(model_path=f'/scr/yren/best_model/micronuclei_detection_project/{model_name}')
+model.load(f'{CURRENT_PATH}/all_data_micronuclei_no_rescale/train{OUTPUT_DIR}{model_name}')
 
 
 # Log in WanDB
@@ -105,7 +109,7 @@ for i in tqdm(range(len(annot_files))):
             "weight_decay":WEIGHT_DECAY,
             "probability_threshold":THRESHOLD,
             "IoU_threshold":IoU_THRESHOLD,
-            "dilation":DILATION,
+            "dilation":0,
             "gaussian":'gaussian not need for prediction',
             'Number of validation images':len(annot_files)
         },
@@ -133,9 +137,9 @@ for i in tqdm(range(len(annot_files))):
     labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
     
     # dilate the labeled mn
-    if DILATION > 0:
-        dilation = skimage.morphology.disk(DILATION)
-        labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
+    # if DILATION > 0:
+    #     dilation = skimage.morphology.disk(DILATION)
+    #     labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
     
     evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=IoU_THRESHOLD, report_obj='Micronuclei')
     

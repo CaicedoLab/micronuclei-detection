@@ -4,9 +4,6 @@ import random
 import torch
 import numpy as np
 import pandas as pd
-import scipy
-
-import skimage.morphology
 
 from tqdm import tqdm
 from torch.utils.data import Dataset

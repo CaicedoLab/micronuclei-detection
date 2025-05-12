@@ -12,10 +12,13 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 # from torchvision.ops import sigmoid_focal_loss
 
-import sys
-from dinomn import mnds
-from dinomn import detection as detection
-        
+# pip packaging
+# from dinomn import mnds
+# from dinomn import detection as detection
+
+import mnds
+import detection as detection
+
         
 class DiceLoss(torch.nn.Module):
     def __init__(self, alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean'):

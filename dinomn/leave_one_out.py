@@ -1,9 +1,6 @@
 import os
 import sys
 import torch
-from dinomn import mnds
-from dinomn import mnmodel
-from dinomn import evaluation
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -12,6 +9,10 @@ import skimage
 import os
 import sys
 import wandb
+
+import mnds
+import mnmodel
+import evaluation
 
 # Fixed Hyperparameters
 PATCH_SIZE = 256
@@ -30,12 +31,11 @@ WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters
 SCALE_FACTOR = 1.0
-DILATION = 2 # 2 might be the best, only affect inference
 GAUSSIAN = True # only affect training
 EDGES = False
 
 OVERSAMPLE = 'Yes' # if Yes, save model name as DinoMN_oversampled
-ARCHITECTURE = f"Leave cell-line out"
+ARCHITECTURE = f"Leave microscope out, no dilation"
 
 
 CURRENT_PATH = os.getcwd()
@@ -47,7 +47,7 @@ os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
 os.environ['MPLCONFIGDIR'] = CURRENT_PATH + '/.cache/matplotlib/config'
 
 if len(sys.argv) < 3:
-    print("Use: python leave_one_out.py cell_line gpu")
+    print("Use: python leave_one_out.py microscope gpu")
     sys.exit()
 
 
@@ -71,6 +71,14 @@ elif subset == 'RPE1':
     files_to_remove = df[df.cell_line == 'RPE1'].filenames.to_list()
 elif subset == 'U2OS':
     files_to_remove = df[df.cell_line == 'U2OS'].filenames.to_list()
+
+# LEAVE-MICROSCOPE-OUT Code:
+# if subset == 'pilot_screen':
+#     files_to_remove = df[df.datasets.isin(['pilot', 'screen'])].filenames.to_list()
+# elif subset == 'hela_rpe1':
+#     files_to_remove = df[df.datasets.isin(['HeLa', 'RPE1'])].filenames.to_list()
+# else:
+#     files_to_remove = df[df.datasets.isin([subset])].filenames.to_list()
 
 fn = lambda file: file.replace('phenotype.tif', 'phenotype_outlines.png')
 files_to_remove = [fn(file) for file in files_to_remove]
@@ -110,7 +118,7 @@ if True:
             "patch_size":PATCH_SIZE,
             "weight_decay":WEIGHT_DECAY,
             "probability_threshold":THRESHOLD,
-            "dilation":DILATION,
+            "dilation":0,
             "gaussian":GAUSSIAN,
             'edges':EDGES,
             'step':STEP,
@@ -124,8 +132,8 @@ if True:
 
     # Create model
     model = mnmodel.MicronucleiModel(
-        DIRECTORY, 
-        device, 
+        device=device,
+        data_dir=DIRECTORY, 
         training_files=new_training_files, 
         validation_files=validation_filelist, 
         patch_size=PATCH_SIZE,
@@ -144,14 +152,15 @@ if True:
                 )
 
     # Save
-    model.save(outdir=OUTPUT_DIR, model_name=f'leave_{subset}_out_oversampled')
+    model.save(outdir=OUTPUT_DIR, model_name=f'leave_{subset}_out')
     
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
-    DIRECTORY, 
-    device
+    device=device, 
+    data_dir=DIRECTORY
 )
-model.load(f'leave_{subset}_out_oversampled.pth', model_dir=OUTPUT_DIR)
+model_name = f'leave_{subset}_out.pth'
+model.load(f'{CURRENT_PATH}/all_data_micronuclei_no_rescale/train{OUTPUT_DIR}{model_name}')
 
 # Validate
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
@@ -163,7 +172,7 @@ for i in tqdm(range(len(validation_filelist))):
     validation_file = validation_filelist[i]
     imid = validation_file.split('.')[0]
     
-    ARCHITECTURE = f'Leave {subset} evaluation (oversampled: {OVERSAMPLE})'
+    ARCHITECTURE = f'Leave {subset} out, no dilation'
     wandb.init(
         project='Best_Experiment',
         config={
@@ -182,7 +191,7 @@ for i in tqdm(range(len(validation_filelist))):
             "weight_decay":WEIGHT_DECAY,
             "probability_threshold":THRESHOLD,
             "IoU_threshold":IoU_THRESHOLD,
-            "dilation":DILATION,
+            "dilation":0,
             "gaussian":'gaussian not need for prediction',
             'Number of training images':len(new_training_files),
             'Number of validation images':len(validation_filelist),
@@ -204,11 +213,6 @@ for i in tqdm(range(len(validation_filelist))):
     mn_pred = probabilities[0,:,:] > THRESHOLD
     labeled_mn = skimage.morphology.label(mn_pred)
     labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
-    
-    # dilate the labeled mn
-    if DILATION > 0:
-        dilation = skimage.morphology.disk(DILATION)
-        labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
         
     evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=IoU_THRESHOLD, report_obj='Micronuclei')
     

@@ -6,7 +6,7 @@ cd dinomn
 gpu=0
 
 usage() {
-    echo "Usage: $0 [-i cell_line]"
+    echo "Usage: $0 [-i subset]"
     exit 1
 }
 
@@ -14,13 +14,13 @@ usage() {
 while getopts ":i:" opt; do
     case ${opt} in
         i )
-            cell_line=$OPTARG
+            subset=$OPTARG
             ;;
     esac
 done
 shift $((OPTIND -1))
 
 mkdir predictions
-output_file="prediction_$cell_line.txt"
-python3 leave_one_out.py $cell_line $gpu > $output_file
+output_file="prediction_$subset.txt"
+python3 leave_one_out.py $subset $gpu > $output_file
 cp $output_file predictions/

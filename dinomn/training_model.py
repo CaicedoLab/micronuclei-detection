@@ -96,8 +96,8 @@ wandb.init(
 
 # Create model
 model = mnmodel.MicronucleiModel(
-    DIRECTORY, 
-    device, 
+    device=device,
+    data_dir=DIRECTORY,
     training_files=training_files, 
     validation_files=validation_filelist,
     patch_size=PATCH_SIZE,
