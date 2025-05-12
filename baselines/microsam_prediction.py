@@ -78,7 +78,7 @@ wandb.login(key=key)
 
 # Hyperparameters to load fine-tuned model
 checkpoint_name = "sam_hela"
-best_checkpoint = os.path.join(os.getcwd(), 'microSAM_finetune_data', "models", "checkpoints", checkpoint_name, "best.pt")
+best_checkpoint = os.path.join(os.getcwd(), 'data_for_finetuning', "models", "checkpoints", checkpoint_name, "best.pt")
 device = "cuda" if torch.cuda.is_available() else "cpu"  # the device/GPU used for training
 model_type = "vit_b_lm"
 
@@ -98,7 +98,6 @@ for i in range(len(validation_files)):
     )
     
     im = skimage.io.imread(DIRECTORY + validation_files[i])
-    # im = ((im / im.max()) * 255).astype(np.uint8)
     
     # Document Inference Time
     s = time.time()

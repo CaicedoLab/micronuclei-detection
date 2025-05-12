@@ -27,8 +27,8 @@ patch_shape = (256, 256)  # the size of patches for training
 sampler = MinInstanceSampler(min_size=25)
 
 raw_key, label_key = '*.phenotype.tif', '*.phenotype_outlines.png'
-train_dir = '/scr/yren/micronuclei-detection/baselines/microSAM_finetune_data/train/'
-val_dir = '/scr/yren/micronuclei-detection/baselines/microSAM_finetune_data/validation/'
+train_dir = '/scr/yren/micronuclei-detection/baselines/data_for_finetuning/train/'
+val_dir = '/scr/yren/micronuclei-detection/baselines/data_for_finetuning/validation/'
 train_instance_segmentation = True
 train_segmentation_dir = train_dir
 val_segmentation_dir = val_dir
@@ -74,7 +74,7 @@ model_type = "vit_b_lm"
 # The name of the checkpoint. The checkpoints will be stored in './checkpoints/<checkpoint_name>'
 checkpoint_name = "sam_hela"
 
-root_dir = '/scr/yren/micronuclei-detection/baselines/microSAM_finetune_data'
+root_dir = '/scr/yren/micronuclei-detection/baselines/data_for_finetuning'
 
 sam_training.train_sam(
     name=checkpoint_name,
