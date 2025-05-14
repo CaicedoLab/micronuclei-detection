@@ -12,19 +12,19 @@ import dinomn.evaluation as evaluation
 import dinomn.mnds as mnds
 from cellpose import io, models, train
 
-ARCHITECTURE = "Cellpose predictions - finetune"
+ARCHITECTURE = "3rd Cellpose predictions - finetune"
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation/'
 
 SCALE_FACTOR = 1.0
 
-path = '/scr/yren/micronuclei-detection/baselines/all_data_micronuclei_no_rescale/'
-train_dir = os.path.join(path, 'train')
-val_dir = os.path.join(path, 'validation')
+# path = '/scr/yren/micronuclei-detection/baselines/all_data_micronuclei_no_rescale/'
+# train_dir = os.path.join(path, 'train')
+# val_dir = os.path.join(path, 'validation')
 
-output = io.load_train_test_data(train_dir, val_dir, image_filter=".phenotype",
-                                mask_filter=".phenotype_outlines", look_one_level_down=False)
-images, labels, image_names, test_images, test_labels, image_names_test = output
+# output = io.load_train_test_data(train_dir, val_dir, image_filter=".phenotype",
+#                                 mask_filter=".phenotype_outlines", look_one_level_down=False)
+# images, labels, image_names, test_images, test_labels, image_names_test = output
 
 
 files = os.listdir(DIRECTORY)
@@ -39,21 +39,22 @@ wandb.login(key=key)
 model = models.CellposeModel(gpu=True, model_type='cyto3')
 channels = [0,0]
 
-save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
-model_path, train_losses, test_losses = train.train_seg(
-    model.net,
-    train_data=images,
-    train_labels=labels,
-    channels=[0, 0],              # Use first channel (grayscale)
-    channel_axis=None,            # No channel dimension in your data
-    weight_decay=1e-6,
-    learning_rate=1e-5,
-    n_epochs=100,
-    normalize=True,
-    model_name="finetuned_cellpose.pth",
-    save_path=save_path
-)
+# save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
+# model_path, train_losses, test_losses = train.train_seg(
+#     model.net,
+#     train_data=images,
+#     train_labels=labels,
+#     channels=[0, 0],              # Use first channel (grayscale)
+#     channel_axis=None,            # No channel dimension in your data
+#     weight_decay=1e-6,
+#     learning_rate=1e-5,
+#     n_epochs=100,
+#     normalize=True,
+#     model_name="finetuned_cellpose.pth",
+#     save_path=save_path
+# )
 
+MICRON_AREA_THRESHOLD = 100
 
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
@@ -65,6 +66,7 @@ for i in range(len(validation_files)):
         config={
             "architecture":ARCHITECTURE,
             'model':'Cellpose cyto3',
+            'area_threshold':MICRON_AREA_THRESHOLD,
             'diameter':diam_labels
         },
         name=f'{imid}',
@@ -81,8 +83,6 @@ for i in range(len(validation_files)):
     
     masks = np.asarray(masks, dtype='uint16')
     
-    # remove sizes > 100
-    MICRON_AREA_THRESHOLD = 100
     labels = skimage.morphology.label(masks)
     micron_labels = []
     for i in range(1, len(np.unique(labels))):
