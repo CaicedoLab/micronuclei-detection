@@ -12,20 +12,39 @@ import dinomn.evaluation as evaluation
 import dinomn.mnds as mnds
 from cellpose import io, models, train
 
-ARCHITECTURE = "3rd Cellpose predictions - finetune"
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation/'
 
 SCALE_FACTOR = 1.0
 
-# path = '/scr/yren/micronuclei-detection/baselines/all_data_micronuclei_no_rescale/'
-# train_dir = os.path.join(path, 'train')
-# val_dir = os.path.join(path, 'validation')
+if len(sys.argv) < 2:
+    print("Use: python cellpose_prediction.py specialist")
+    sys.exit()
 
-# output = io.load_train_test_data(train_dir, val_dir, image_filter=".phenotype",
-#                                 mask_filter=".phenotype_outlines", look_one_level_down=False)
-# images, labels, image_names, test_images, test_labels, image_names_test = output
+specialist = str(sys.argv[1])
 
+ARCHITECTURE = f"Cellpose specialist - {specialist}"
+
+# Train
+files = os.listdir(DIRECTORY.replace('validation', 'train'))
+filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
+annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
+annot_files.sort()
+training_files = annot_files.copy()
+
+df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei_no_rescale/metadata.csv')
+if specialist == 'pilot_screen':
+    files_to_keep = df[(df.datasets.isin(['pilot', 'screen'])) & (df.split == 'train')].filenames.to_list()
+elif specialist == 'hela_rpe1':
+    files_to_keep = df[(df.datasets.isin(['HeLa', 'RPE1'])) & (df.split == 'train')].filenames.to_list()
+else:
+    files_to_keep = df[(df.datasets.isin([specialist])) & (df.split == 'train')].filenames.to_list()
+
+fn = lambda file: file.replace('phenotype.tif', 'phenotype_outlines.png')
+new_training_files = [fn(file) for file in files_to_keep]
+fn2 = lambda file: file.replace('phenotype_outlines.png', 'phenotype.tif')
+inputs = [fn2(file) for file in new_training_files]
+    
 
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
@@ -36,26 +55,31 @@ key_file = open('/scr/yren/wandb_key.txt', 'r')
 key = key_file.readline()
 wandb.login(key=key)
 
+path = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train/'
+imgs = [io.imread(path + f) for f in inputs]
+gts = [io.imread(path + f) for f in new_training_files]
+
 model = models.CellposeModel(gpu=True, model_type='cyto3')
 channels = [0,0]
 
-# save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
-# model_path, train_losses, test_losses = train.train_seg(
-#     model.net,
-#     train_data=images,
-#     train_labels=labels,
-#     channels=[0, 0],              # Use first channel (grayscale)
-#     channel_axis=None,            # No channel dimension in your data
-#     weight_decay=1e-6,
-#     learning_rate=1e-5,
-#     n_epochs=100,
-#     normalize=True,
-#     model_name="finetuned_cellpose.pth",
-#     save_path=save_path
-# )
+save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
+model_path, train_losses, test_losses = train.train_seg(
+    model.net,
+    train_data=imgs,
+    train_labels=gts,
+    channels=[0, 0],              # Use first channel (grayscale)
+    channel_axis=None,            # No channel dimension in your data
+    weight_decay=1e-6,
+    learning_rate=1e-5,
+    n_epochs=100,
+    normalize=True,
+    min_train_masks=0,
+    model_name=f"cellpose_{specialist}_specialist.pth",
+    save_path=save_path
+)
 
-MICRON_AREA_THRESHOLD = 100
 
+MICRON_AREA_THRESHOLD = 300
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
     
@@ -67,7 +91,8 @@ for i in range(len(validation_files)):
             "architecture":ARCHITECTURE,
             'model':'Cellpose cyto3',
             'area_threshold':MICRON_AREA_THRESHOLD,
-            'diameter':diam_labels
+            'diameter':diam_labels,
+            'num of training images': len(new_training_files)
         },
         name=f'{imid}',
         reinit=True

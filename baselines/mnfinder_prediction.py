@@ -20,8 +20,8 @@ from skimage.exposure import rescale_intensity
 from skimage.segmentation import clear_border
 
 from mnfinder import MNClassifier
-import dinomn.evaluation
-import dinomn.mnds
+import dinomn.evaluation as evaluation
+import dinomn.mnds as mnds
 
 ARCHITECTURE = "MNFinder predictions - Inference time"
 CURRENT_PATH = os.getcwd()
@@ -56,7 +56,7 @@ for i in range(len(validation_files)):
         reinit=True
     )
 
-    im = dinomn.mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
+    im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
     
     # Document inference time
     s = time.time()
@@ -70,8 +70,8 @@ for i in range(len(validation_files)):
     np.save(save_path + imid + '._probabilities.npy', micro_labels)
 
     # evaluation
-    mn_gt = dinomn.mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
-    dinomn.evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
+    mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, report_obj='Micronuclei')
 
 # release the resources
 wandb.finish()
