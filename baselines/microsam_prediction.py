@@ -95,7 +95,7 @@ train_instance_segmentation = True
 train_segmentation_dir = train_dir
 val_segmentation_dir = val_dir
 
-batch_size = 5  # the training batch size
+batch_size = 1  # the training batch size
 patch_shape = (256, 256)  # the size of patches for training
 sampler = MinInstanceSampler(min_size=25)
 
