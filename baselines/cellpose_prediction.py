@@ -33,7 +33,11 @@ annot_files.sort()
 training_files = annot_files.copy()
 
 df = pd.read_csv(CURRENT_PATH + '/all_data_micronuclei_no_rescale/metadata.csv')
-if specialist == 'pilot_screen':
+if specialist == 'frozen_all':
+    files_to_keep = df[df.split == 'train'].filenames.to_list() # keep all training files
+elif specialist == 'finetune_all':
+    files_to_keep = df[df.split == 'train'].filenames.to_list() # keep all training files
+elif specialist == 'pilot_screen':
     files_to_keep = df[(df.datasets.isin(['pilot', 'screen'])) & (df.split == 'train')].filenames.to_list()
 elif specialist == 'hela_rpe1':
     files_to_keep = df[(df.datasets.isin(['HeLa', 'RPE1'])) & (df.split == 'train')].filenames.to_list()
@@ -59,50 +63,70 @@ path = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train/'
 imgs = [io.imread(path + f) for f in inputs]
 gts = [io.imread(path + f) for f in new_training_files]
 
-model = models.CellposeModel(gpu=True, model_type='cyto3')
-channels = [0,0]
+if specialist == 'frozen_all':
+    model = models.CellposeModel(gpu=True, model_type='cyto3')
+    channels = [0,0]
+else:
+    model = models.CellposeModel(gpu=True, model_type='cyto3')
+    channels = [0,0]
 
-save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
-model_path, train_losses, test_losses = train.train_seg(
-    model.net,
-    train_data=imgs,
-    train_labels=gts,
-    channels=[0, 0],              # Use first channel (grayscale)
-    channel_axis=None,            # No channel dimension in your data
-    weight_decay=1e-6,
-    learning_rate=1e-5,
-    n_epochs=100,
-    normalize=True,
-    min_train_masks=0,
-    model_name=f"cellpose_{specialist}_specialist.pth",
-    save_path=save_path
-)
+    save_path = '/scr/yren/micronuclei-detection/baselines/cellpose_models/'
+    model_path, train_losses, test_losses = train.train_seg(
+        model.net,
+        train_data=imgs,
+        train_labels=gts,
+        channels=[0, 0],              # Use first channel (grayscale)
+        channel_axis=None,            # No channel dimension in your data
+        weight_decay=1e-6,
+        learning_rate=1e-5,
+        n_epochs=100,
+        normalize=True,
+        min_train_masks=0,
+        model_name=f"cellpose_{specialist}_specialist.pth",
+        save_path=save_path
+    )
 
 
-MICRON_AREA_THRESHOLD = 300
+MICRON_AREA_THRESHOLD = 300 # 300 is the best cut-off
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
     
-    diam_labels = model.diam_labels.copy()
-    
-    wandb.init(
-        project='Best_Experiment',
-        config={
-            "architecture":ARCHITECTURE,
-            'model':'Cellpose cyto3',
-            'area_threshold':MICRON_AREA_THRESHOLD,
-            'diameter':diam_labels,
-            'num of training images': len(new_training_files)
-        },
-        name=f'{imid}',
-        reinit=True
-    )
+    if specialist == 'frozen_all':
+        wandb.init(
+            project='Best_Experiment',
+            config={
+                "architecture":ARCHITECTURE,
+                'model':'Cellpose cyto3',
+                'area_threshold':MICRON_AREA_THRESHOLD,
+                # 'diameter':diam_labels,
+                'num of training images': len(new_training_files)
+            },
+            name=f'{imid}',
+            reinit=True
+        )
+    else:
+        diam_labels = model.diam_labels.copy()
+        wandb.init(
+            project='Best_Experiment',
+            config={
+                "architecture":ARCHITECTURE,
+                'model':'Cellpose cyto3',
+                'area_threshold':MICRON_AREA_THRESHOLD,
+                'diameter':diam_labels,
+                'num of training images': len(new_training_files)
+            },
+            name=f'{imid}',
+            reinit=True
+        )
     
     im = skimage.io.imread(DIRECTORY + validation_files[i])
     
     # Document inference time
     s = time.time()
-    masks = model.eval(im, channels=channels, diameter=diam_labels)[0]
+    if specialist == 'frozen_all':
+        masks = model.eval(im, channels=channels)[0]
+    else:
+        masks = model.eval(im, channels=channels, diameter=diam_labels)[0]
     e = time.time()
     wandb.log({'Inference Time': e-s})
     

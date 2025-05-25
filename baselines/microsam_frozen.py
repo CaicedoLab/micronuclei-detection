@@ -4,40 +4,29 @@ import torch
 import sys
 sys.path.append('../')
 
-import warnings
-warnings.filterwarnings("ignore")
-
-import os
-from typing import Union, Tuple, Optional
-import torch
-from torch_em.data import MinInstanceSampler
-import micro_sam.training as sam_training
+from typing import Optional, Union, Tuple
+from micro_sam.evaluation.model_comparison import _enhance_image
 from micro_sam.automatic_segmentation import get_predictor_and_segmenter, automatic_instance_segmentation
 
 import dinomn.mnds as mnds
 import dinomn.evaluation as evaluation
 
 import wandb
+import os
+from tqdm import tqdm
 import time
 
 
+ARCHITECTURE = "microSAM predictions - frozen backbone"
 CURRENT_PATH = os.getcwd()
 DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation/'
 SCALE_FACTOR = 1.0
 
-if len(sys.argv) < 2:
-    print("Use: python microsam_prediction.py specialist")
-    sys.exit()
-
-specialist = str(sys.argv[1])
-
-
-ARCHITECTURE = f"microSAM specialist - {specialist}"
-# ARCHITECTURE = f"microSAM generalist finetuned"
 
 def run_automatic_instance_segmentation(
     image: np.ndarray,
-    checkpoint_path: Union[os.PathLike ,str],
+    ndim: int,
+    checkpoint_path: Optional[Union[os.PathLike, str]] = None,
     model_type: str = "vit_b_lm",
     device: Optional[Union[str, torch.device]] = None,
     tile_shape: Optional[Tuple[int, int]] = None,
@@ -49,6 +38,7 @@ def run_automatic_instance_segmentation(
 
     Args:
         image: The input image.
+        ndim: The number of dimensions for the input data.
         checkpoint_path: The path to stored checkpoints.
         model_type: The choice of the `µsam` model.
         device: The device to run the model inference.
@@ -63,7 +53,8 @@ def run_automatic_instance_segmentation(
         model_type=model_type,  # choice of the Segment Anything model
         checkpoint=checkpoint_path,  # overwrite to pass your own finetuned model.
         device=device,  # the device to run the model inference.
-        is_tiled=(tile_shape is not None),  # whether to run automatic segmentation.
+        amg=False,  # set the automatic segmentation mode to AIS.
+        is_tiled=(tile_shape is not None),  # whether to run automatic segmentation with tiling.
     )
 
     # Step 2: Get the instance segmentation for the given image.
@@ -71,92 +62,14 @@ def run_automatic_instance_segmentation(
         predictor=predictor,  # the predictor for the Segment Anything model.
         segmenter=segmenter,  # the segmenter class responsible for generating predictions.
         input_path=image,  # the filepath to image or the input array for automatic segmentation.
-        ndim=2,  # the number of input dimensions.
+        ndim=ndim,  # the number of input dimensions.
         tile_shape=tile_shape,  # the tile shape for tiling-based prediction.
         halo=halo,  # the overlap shape for tiling-based prediction.
     )
 
     return prediction
 
-# Data Loader
-raw_key, label_key = '*.phenotype.tif', '*.phenotype_outlines.png'
-# Generalist
-# train_dir = './data_finetune_microsam/train/'
-# val_dir = './data_finetune_microsam/validation/'
 
-# Specialist
-train_dir = f'./data_finetune_microsam/train/{specialist}/'
-if specialist == 'mnfinder_train':
-    val_dir = f'./data_finetune_microsam/validation/{specialist.replace('train', 'validation')}/'
-else:
-    val_dir = f'./data_finetune_microsam/validation/{specialist}/'
-print(f'Is validation directory valid: {os.path.isdir(val_dir)}')
-train_instance_segmentation = True
-train_segmentation_dir = train_dir
-val_segmentation_dir = val_dir
-
-batch_size = 1  # the training batch size
-patch_shape = (256, 256)  # the size of patches for training
-sampler = MinInstanceSampler(min_size=25)
-
-train_loader = sam_training.default_sam_loader(
-    raw_paths=train_dir,
-    raw_key=raw_key,
-    label_paths=train_segmentation_dir,
-    label_key=label_key,
-    with_segmentation_decoder=train_instance_segmentation,
-    patch_shape=patch_shape,
-    batch_size=batch_size,
-    is_seg_dataset=True,
-    rois=None,
-    shuffle=True,
-    raw_transform=sam_training.identity,
-    # raw_transform=lambda x: np.clip(x, 0, 255).astype(np.uint8),
-    # raw_transform=lambda x: ((x - x.min()) / (x.max() - x.min()) * 255).astype(np.uint8),
-    sampler=sampler
-)
-
-val_loader = sam_training.default_sam_loader(
-    raw_paths=val_dir,
-    raw_key=raw_key,
-    label_paths=val_segmentation_dir,
-    label_key=label_key,
-    with_segmentation_decoder=train_instance_segmentation,
-    patch_shape=patch_shape,
-    batch_size=batch_size,
-    is_seg_dataset=True,
-    rois=None,
-    shuffle=True,
-    raw_transform=sam_training.identity,
-    # raw_transform=lambda x: np.clip(x, 0, 255).astype(np.uint8),
-    # raw_transform=lambda x: ((x - x.min()) / (x.max() - x.min()) * 255).astype(np.uint8),
-    sampler=None
-)
-
-
-# Finetuning
-n_objects_per_batch = 5  # the number of objects per batch that will be sampled
-device = "cuda" if torch.cuda.is_available() else "cpu"  # the device/GPU used for training
-n_epochs = 5
-model_type = "vit_b_lm"
-checkpoint_name = f"sam_{specialist}"
-# checkpoint_name = f"sam_generalist"
-best_checkpoint = os.path.join(os.getcwd(), 'data_finetune_microsam', "models", "checkpoints", checkpoint_name, "best.pt")
-root_dir = './data_finetune_microsam'
-
-sam_training.train_sam(
-    name=checkpoint_name,
-    save_root=os.path.join(root_dir, "models"),
-    model_type=model_type,
-    train_loader=train_loader,
-    val_loader=val_loader,
-    n_epochs=n_epochs,
-    n_objects_per_batch=n_objects_per_batch,
-    with_segmentation_decoder=train_instance_segmentation,
-    device=device
-)
-
-# Validation
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
 validation_files = [x for x in filelist if x.endswith('.phenotype.tif')]
@@ -167,9 +80,7 @@ key = key_file.readline()
 wandb.login(key=key)
 
 
-# Load the best checkpoint
-best_checkpoint = os.path.join(os.getcwd(), 'data_finetune_microsam', "models", "checkpoints", checkpoint_name, "best.pt")
-MICRON_AREA_THRESHOLD = 300
+MICRON_AREA_THRESHOLD = 300 # 300 is the most reasonable threshold
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
     
@@ -178,7 +89,7 @@ for i in range(len(validation_files)):
         project='Best_Experiment',
         config={
             "architecture":ARCHITECTURE,
-            'model':'microSAM',
+            'model':'microSAM frozen backbone',
             'area_threshold':MICRON_AREA_THRESHOLD
         },
         name=f'{imid}',
@@ -186,20 +97,22 @@ for i in range(len(validation_files)):
     )
     
     im = skimage.io.imread(DIRECTORY + validation_files[i])
+    im = ((im / im.max()) * 255).astype(np.uint8)
     
     # Document Inference Time
     s = time.time()
-    prediction = run_automatic_instance_segmentation(
-        image=im,
-        checkpoint_path=best_checkpoint,
-        model_type=model_type,
-        device=device
-    )
+    model_choice = 'vit_b_lm'
+    H,W = im.shape
+    if (H > 1024) and (W > 1024):
+        prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device='cuda', tile_shape=(1024, 1024), halo=(256, 256))
+    else:
+        prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device='cuda')
     e = time.time()
     wandb.log({'Inference Time': e-s})
     
     prediction = np.asarray(prediction, dtype='uint16')
-
+    
+    wandb.log({'micronuclei area threshold':MICRON_AREA_THRESHOLD})
     labels = skimage.morphology.label(prediction)
     micron_labels = []
     for i in range(1, len(np.unique(labels))):
@@ -211,7 +124,7 @@ for i in range(len(validation_files)):
     for i in micron_labels:
         micro_mask += (labels == i)
     
-    save_path = CURRENT_PATH + '/microSAM_predictions/'
+    save_path = CURRENT_PATH + '/microSAM_predictions/frozen/'
     np.save(save_path + imid + '._probabilities.npy', micro_mask)
     
     # evaluation
