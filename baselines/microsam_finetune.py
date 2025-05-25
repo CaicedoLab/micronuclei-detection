@@ -171,7 +171,6 @@ wandb.login(key=key)
 
 
 # Load the best checkpoint
-best_checkpoint = os.path.join(os.getcwd(), 'microSAM_specialist_data', "models", "checkpoints", checkpoint_name, "best.pt")
 MICRON_AREA_THRESHOLD = 300
 for i in range(len(validation_files)):
     imid = validation_files[i].split('.')[0]
