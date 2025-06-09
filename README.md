@@ -46,4 +46,25 @@ evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=m
 ```
 
 # Train your own specialist model
-- In progress finishing documentations
+- Expected training images extension: `.phenotype.tif`, nuclei mask extension: `.nuclei-clean.tif`, ground truth mask: `phenotype_outlines.png`.
+
+```python
+files = os.listdir(DIRECTORY)
+annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
+
+validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
+validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
+
+device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
+
+model = mnmodel.MicronucleiModel(
+    device=device,
+    data_dir=DIRECTORY,
+    training_files=training_files, 
+    validation_files=validation_filelist,
+    patch_size=256,
+    gaussian=True
+)
+
+model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
+```
