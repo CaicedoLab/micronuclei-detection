@@ -1,6 +1,8 @@
 # Micronuclei Detection
 Detecting micronuclei in images using Transformer Networks
 
+Refer to [tutorial notebook](notebooks/tutorial/tutorial.ipynb) for real examples
+
 
 # Install package
 ```bash
