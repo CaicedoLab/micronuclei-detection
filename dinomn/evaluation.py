@@ -99,7 +99,7 @@ def measures_at(threshold, IOU):
     return f1, prec, rec, TP, FP, FN
 
 
-def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, report_obj='Micronuclei'):
+def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, wandb=False):
     # start = time.time()
     pi = skimage.morphology.label(predictions)
     gti = skimage.morphology.label(gt)
@@ -107,14 +107,14 @@ def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, report_ob
     if IoUs.size == 0:
         prec = 0.0
         rec = 0.0
-        # print(f'----- Segmentation Report for {report_obj} -----')
-        print(f'{imid},{prec},{rec}')
-        wandb.log({'Precision':prec, 'Recall':rec})
+        print(f'{imid}, Precision: {prec}, Recall: {rec}')
+        if wandb:
+            wandb.log({'Precision':prec, 'Recall':rec})
     else:
         f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
-        # print(f'----- Segmentation Report for {report_obj} -----')
-        print(f'{imid},{prec:.4f},{rec:.4f}')
-        wandb.log({'Precision':prec, 'Recall':rec})
+        print(f'{imid}, Precision: {prec}, Recall: {rec}')
+        if wandb:
+            wandb.log({'Precision':prec, 'Recall':rec})
 
 def get_assignment(C, gt):
     # Map token predictions to pixels (multiply by 8)

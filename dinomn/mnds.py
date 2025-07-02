@@ -24,19 +24,19 @@ def patch_to_rgb(patch, edges=False):
     return torch.Tensor(px)
 
 # OPEN AN IMAGE
-def read_image(directory, imid, suffix, scale=1.0):
-    imname = f'{directory}/{imid}.{suffix}'
-    im = skimage.io.imread(imname)
+def read_image(image_path, scale=1.0):
+    im = skimage.io.imread(image_path)
     if scale != 1.:
         im = skimage.transform.rescale(im, scale)
     return im
 
 
 # READ MICRONUCLEI ANNOTATIONS
-def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=1.0):
-    mask = read_image(directory, imid, 'phenotype_outlines.png', scale=scale_factor)
-    img = read_image(directory, imid, 'phenotype.tif', scale=scale_factor)
+def read_micronuclei_annotations(directory, filename, size_filter=1e9, scale_factor=1.0):
+    mask = read_image(os.path.join(directory, 'nuclei_masks', filename), scale=scale_factor)
+    img = read_image(os.path.join(directory, 'images', filename), scale=scale_factor)
     
+    imid = filename.split('.')[0]
     labels = skimage.measure.label(mask)
     data = []
     for i in range(1,len(np.unique(labels))):
@@ -53,9 +53,9 @@ def read_micronuclei_annotations(directory, imid, size_filter=1e9, scale_factor=
     return mni #, labels
 
 
-def read_nuclei_masks(directory, imid, scale_factor=1.0):
+def read_nuclei_masks(directory, filename, scale_factor=1.0):
     # otl = read_image(directory, imid, 'nuclei.tif', scale=scale_factor)
-    otl = read_image(directory, imid, 'nuclei-clean.tif', scale=scale_factor)
+    otl = read_image(os.path.join(directory, 'nuclei_masks', filename), scale=scale_factor)
     otl = otl > 0 # It's a labeled matrix, so make it binary
     return otl
 
@@ -87,7 +87,7 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, filelist, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, gaussian=False):
+    def __init__(self, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, gaussian=False):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
@@ -100,21 +100,20 @@ class MicronucleiDataset(Dataset):
         self.directory = directory
         
         # Load images and annotations
-        # all_locs = []
+        img_files = os.listdir(os.path.join(directory, 'images'))
+        img_files= [file for file in img_files if not file.startswith('.')]
+        
         self.images = {}
-        for fname in tqdm(filelist):
+        for fname in tqdm(img_files):
             imid = fname.split('.')[0]
-            im = read_image(directory, imid, 'phenotype.tif', scale_factor)
+            im = read_image(os.path.join(directory, 'images', fname), scale=scale_factor)
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-            #im = skimage.exposure.rescale_intensity(im, out_range=np.float32)
-            mni = read_micronuclei_annotations(directory, imid)
-            mnm = read_image(directory, imid, 'phenotype_outlines.png', scale_factor)
-            nuc = read_nuclei_masks(directory, imid)
-            # all_locs.append(mni)
+            mni = read_micronuclei_annotations(directory, fname)
+            mnm = read_image(os.path.join(directory, 'mn_masks', fname.replace('.tif', '.png')), scale_factor) # expect micronuclei annotation in png format
+            nuc = read_nuclei_masks(directory, fname) # nuclei mask in tif format
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             
-        # self.all_locs = pd.concat(all_locs)
-        
+            
         # Prepare data locations
         if self.mode == "random":
             self.randomize_patch_index()

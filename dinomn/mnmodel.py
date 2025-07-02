@@ -7,14 +7,9 @@ import numpy as np
 import pandas as pd
 import torch.nn.functional as F
 
-from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-# from torchvision.ops import sigmoid_focal_loss
 
-# pip packaging
-# from dinomn import mnds
-# from dinomn import detection as detection
 
 import sys
 sys.path.append('../')
@@ -121,19 +116,20 @@ class MicronucleiModel(torch.nn.Module):
     # pipeline_tag = "DinoMN-Model"
     # license = "mit"
     
-    def __init__(self, device, data_dir='', training_files=[], validation_files=[], edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
+    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
         super().__init__()
         
         self.data_dir = data_dir
         self.device = device
-        self.validation_files = validation_files
         self.patch_size = patch_size
         self.gaussian = gaussian
         
-        if len(training_files) > 0:
+        train_dir = os.path.join(data_dir, 'train')
+        val_dir = os.path.join(data_dir, 'validation')
+        
+        if len(os.listdir(train_dir)) > 0:
             self.training_set = mnds.MicronucleiDataset(
-                filelist=training_files, 
-                directory=data_dir, 
+                directory=train_dir, 
                 mode="random",
                 edges=edges,
                 transform=mnds.detection_transforms,
@@ -142,11 +138,9 @@ class MicronucleiModel(torch.nn.Module):
                 gaussian=gaussian
             )
         
-        if len(validation_files) > 0:
+        if len(os.listdir(val_dir)) > 0:
             self.validation_set = mnds.MicronucleiDataset(
-                filelist=validation_files, 
-                # directory=data_dir,
-                directory=os.getcwd() + '/all_data_micronuclei_no_rescale/validation',
+                directory=val_dir,
                 mode="fixed",
                 edges=edges,
                 scale_factor=scale_factor,
