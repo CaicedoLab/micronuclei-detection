@@ -7,9 +7,7 @@ sys.path.append('../')
 import torch
 import numpy as np
 import wandb
-
 import dinomn.mnmodel as mnmodel
-
 
 
 CURRENT_PATH = os.getcwd()
@@ -51,27 +49,6 @@ EDGES = False
 ARCHITECTURE = "DinoMN: test new retraining code"
 
 OVERSAMPLE = 'Yes' # if Yes, save model name as DinoMN_oversampled
-
-# Train Files
-# files = os.listdir(DIRECTORY)
-# filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
-# annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
-# annot_files.sort()
-
-# training_files = annot_files.copy()
-
-# # Validation Files
-# validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
-# validation_files = [file for file in validation_files if not file.startswith('.')]
-# validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
-# validation_files.sort()
-
-# validation_filelist = validation_files.copy()
-
-# # read the txt files to pass the key, just do not pass private information into github
-# key_file = open('./wandb_key.txt', 'r')
-# key = key_file.readline()
-# wandb.login(key=key)
 
 num_training_files = len(os.listdir(DIRECTORY + '/train/images'))
 num_validation_files = len(os.listdir(DIRECTORY + '/validation/images'))
