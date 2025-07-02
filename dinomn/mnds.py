@@ -130,14 +130,14 @@ class MicronucleiDataset(Dataset):
         self.index = []
         PS = self.patch_size
         
-        df = pd.read_csv(self.directory.replace('train', 'metadata.csv'))
+        df = pd.read_csv(os.path.join(self.directory.replace('/train', ''), 'metadata.csv'))
         for imid in self.images:
             # Generate random patch coordinates C
             H, W = self.images[imid]["image"].shape
             patches_per_image = (W // PS) * (H // PS)
             
             # Oversample more crops
-            subset = df.loc[df.filenames == imid + '.phenotype.tif', 'datasets'].iloc[0]
+            subset = df.loc[df.filenames == imid + '.tif', 'datasets'].iloc[0]
             if subset in ['HeLa', 'RPE1']:
                 patches_per_image = patches_per_image * 7
             elif subset in ['BBBC039', 'mnfinder_train']:

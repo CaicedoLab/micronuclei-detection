@@ -13,8 +13,11 @@ import dinomn.mnmodel as mnmodel
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
-OUTPUT_DIR = "/model_output/output/"
+DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets'
+OUTPUT_DIR = "/model_output/"
+
+if not os.path.exists(DIRECTORY + OUTPUT_DIR):
+    os.makedirs(DIRECTORY + OUTPUT_DIR)
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
@@ -45,30 +48,33 @@ WEIGHT_DECAY = 1e-6
 SCALE_FACTOR = 1.0
 GAUSSIAN = True
 EDGES = False
-ARCHITECTURE = "DinoMN: experiment8 with oversample"
+ARCHITECTURE = "DinoMN: test new retraining code"
 
 OVERSAMPLE = 'Yes' # if Yes, save model name as DinoMN_oversampled
 
 # Train Files
-files = os.listdir(DIRECTORY)
-filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
-annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
-annot_files.sort()
+# files = os.listdir(DIRECTORY)
+# filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
+# annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
+# annot_files.sort()
 
-training_files = annot_files.copy()
+# training_files = annot_files.copy()
 
-# Validation Files
-validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
-validation_files = [file for file in validation_files if not file.startswith('.')]
-validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
-validation_files.sort()
+# # Validation Files
+# validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
+# validation_files = [file for file in validation_files if not file.startswith('.')]
+# validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
+# validation_files.sort()
 
-validation_filelist = validation_files.copy()
+# validation_filelist = validation_files.copy()
 
-# read the txt files to pass the key, just do not pass private information into github
-key_file = open('./wandb_key.txt', 'r')
-key = key_file.readline()
-wandb.login(key=key)
+# # read the txt files to pass the key, just do not pass private information into github
+# key_file = open('./wandb_key.txt', 'r')
+# key = key_file.readline()
+# wandb.login(key=key)
+
+num_training_files = len(os.listdir(DIRECTORY + '/train/images'))
+num_validation_files = len(os.listdir(DIRECTORY + '/validation/images'))
 wandb.init(
     project='Best_Experiment',
     config={
@@ -87,8 +93,8 @@ wandb.init(
         "probability_threshold":THRESHOLD,
         "gaussian":GAUSSIAN,
         'edges':EDGES,
-        'Number of training images':len(training_files),
-        'Number of validation images':len(validation_filelist),
+        'Number of training images':num_training_files,
+        'Number of validation images':num_validation_files,
         'Oversample':OVERSAMPLE
     },
     name=f'model version 3 (test new predict())'
@@ -98,8 +104,6 @@ wandb.init(
 model = mnmodel.MicronucleiModel(
     device=device,
     data_dir=DIRECTORY,
-    training_files=training_files, 
-    validation_files=validation_filelist,
     patch_size=PATCH_SIZE,
     scale_factor=SCALE_FACTOR,
     edges=EDGES, # False, this will recover the input edges, reducing performance
