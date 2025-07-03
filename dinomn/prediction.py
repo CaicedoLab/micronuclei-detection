@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
-
-
 import os
 import sys
 sys.path.append('../')
@@ -11,25 +8,18 @@ import time
 import skimage.morphology
 import torch
 import skimage
-import sklearn.metrics
 import wandb
 from tqdm import tqdm
 
 import numpy as np
-# import matplotlib.pyplot as plt
-
-# pip packaging
-# from dinomn import mnds
-# from dinomn import mnmodel
-# from dinomn import evaluation
 
 import dinomn.mnds as mnds
 import dinomn.mnmodel as mnmodel
 import dinomn.evaluation as evaluation
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation'
-OUTPUT_DIR = "/model_output/output/"
+DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets/validation/images'
+OUTPUT_DIR = "/model_output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
@@ -52,7 +42,7 @@ WEIGHT_DECAY = 1e-6
 
 # Tunable Hyperparameters     
 SCALE_FACTOR = 1 # Trained on non-scaled images
-ARCHITECTURE = f'Without dilation Experiment'
+ARCHITECTURE = f'Explore new code for re-organized datasets'
 
 if len(sys.argv) < 2:
     print("Use: prediction.py gpu")
@@ -64,7 +54,7 @@ device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
 # avoid files starting with . when untarring in CHTC
 files = os.listdir(DIRECTORY)
 filelist = [file for file in files if not file.startswith('.')]
-annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
+annot_files = filelist.copy()
 annot_files.sort()
 
 # Validate
@@ -74,22 +64,13 @@ models_dir = OUTPUT_DIR
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
     device=device,
-    data_dir=CURRENT_PATH + '/all_data_micronuclei_no_rescale/train'
+    data_dir=CURRENT_PATH + '/annotated_mn_datasets/'
 )
-# model.load(validation_file.replace('phenotype_outlines.png','pth'), model_dir=models_dir)
 model_name = 'DinoMN.pth'
-model.load(f'{CURRENT_PATH}/all_data_micronuclei_no_rescale/train{OUTPUT_DIR}{model_name}')
-
-
-# Log in WanDB
-key_file = open('./wandb_key.txt', 'r')
-key = key_file.readline()
-wandb.login(key=key)
+model.load(f'{CURRENT_PATH}/annotated_mn_datasets{OUTPUT_DIR}{model_name}')
 
 
 for i in tqdm(range(len(annot_files))):
-# if True:
-    # Select image for analysis
     validation_file = annot_files[i]
     imid = validation_file.split('.')[0]
     
@@ -119,10 +100,10 @@ for i in tqdm(range(len(annot_files))):
     )
     
     # Load image and annotations
-    im = mnds.read_image(DIRECTORY, imid, 'phenotype.tif', scale=SCALE_FACTOR)
-        
+    im = mnds.read_image(os.path.join(DIRECTORY, validation_file), scale=SCALE_FACTOR)
     im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-    mn_gt = mnds.read_image(DIRECTORY, imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
+    
+    mn_gt = mnds.read_image(os.path.join(DIRECTORY.replace('images', 'mn_masks'), validation_file.replace('.tif', '.png')), scale=SCALE_FACTOR)
     mn_gt = mn_gt > 0 # convert to boolean (binary mask)
     
     # Document inference time
@@ -130,19 +111,17 @@ for i in tqdm(range(len(annot_files))):
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=PREDICTION_BATCH) # has model.eval() & with torch.no_grad()
     e = time.time()
     wandb.log({'Inference Time': e-s})
-    filename = predictions_dir + validation_file.replace('phenotype_outlines.png','_probabilities')
-    # filename = predictions_dir + validation_file.replace('phenotype_outlines.tif','_probabilities') # no ground truth case
+    filename = predictions_dir + imid + '._probabilities'
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
     labeled_mn = skimage.morphology.label(mn_pred)
     labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
     
-    # dilate the labeled mn
-    # if DILATION > 0:
-    #     dilation = skimage.morphology.disk(DILATION)
-    #     labeled_mn = skimage.morphology.dilation(labeled_mn, dilation)
-    
-    evaluation.segmentation_report(imid=imid, predictions=labeled_mn, gt=mn_gt, intersection_ratio=IoU_THRESHOLD, report_obj='Micronuclei')
+    evaluation.segmentation_report(imid=imid, 
+                                   predictions=labeled_mn, 
+                                   gt=mn_gt, 
+                                   intersection_ratio=IoU_THRESHOLD,
+                                   wandb_mode=True)
     
     # save labeled matrices
     np.save(filename, labeled_mn)

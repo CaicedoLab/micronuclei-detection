@@ -121,39 +121,41 @@ class MicronucleiModel(torch.nn.Module):
         
         self.data_dir = data_dir
         self.device = device
+        self.edges = edges
         self.patch_size = patch_size
+        self.scale_factor = scale_factor
         self.gaussian = gaussian
         
-        train_dir = os.path.join(data_dir, 'train')
-        val_dir = os.path.join(data_dir, 'validation')
+        self.train_dir = os.path.join(data_dir, 'train')
+        self.val_dir = os.path.join(data_dir, 'validation')
         
-        if len(os.listdir(train_dir)) > 0:
+
+        
+    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
+        if len(os.listdir(self.train_dir)) > 0:
             self.training_set = mnds.MicronucleiDataset(
-                directory=train_dir, 
+                directory=self.train_dir, 
                 mode="random",
-                edges=edges,
+                edges=self.edges,
                 transform=mnds.detection_transforms,
-                scale_factor=scale_factor,
-                patch_size=patch_size,
-                gaussian=gaussian
+                scale_factor=self.scale_factor,
+                patch_size=self.patch_size,
+                gaussian=self.gaussian
             )
         
-        if len(os.listdir(val_dir)) > 0:
+        if len(os.listdir(self.val_dir)) > 0:
             self.validation_set = mnds.MicronucleiDataset(
-                directory=val_dir,
+                directory=self.val_dir,
                 mode="fixed",
-                edges=edges,
-                scale_factor=scale_factor,
-                patch_size=patch_size,
-                gaussian=gaussian
+                edges=self.edges,
+                scale_factor=self.scale_factor,
+                patch_size=self.patch_size,
+                gaussian=self.gaussian
             )
             self.need_validation_set = True
         else:
-            self.need_validation_set = False
-        
-    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
-        
-        print(f'Number of training crops: {len(self.training_set)}')
+            self.need_validation_set = False 
+       
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         
         if self.need_validation_set:
