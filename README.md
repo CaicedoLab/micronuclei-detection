@@ -49,7 +49,7 @@ evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=m
 
 # Train your own specialist model
 - Expected file extension of training images and nuclei masks is `.tif`, the corresponding training masks is `.png`. Following values are tunable if retraining on non-micronucleus subcellular datasets.
-- Combined loss = 0.8 * subcellular loss + 0.2 nuclei loss.
+- Combined loss = 0.8 * subcellular loss + 0.2 * nuclei loss.
 
 ```python
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
