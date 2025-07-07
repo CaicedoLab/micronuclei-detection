@@ -116,7 +116,7 @@ class MicronucleiModel(torch.nn.Module):
     # pipeline_tag = "DinoMN-Model"
     # license = "mit"
     
-    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=False):
+    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=True):
         super().__init__()
         
         self.data_dir = data_dir
