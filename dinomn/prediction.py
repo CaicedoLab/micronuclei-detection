@@ -18,8 +18,8 @@ import dinomn.mnmodel as mnmodel
 import dinomn.evaluation as evaluation
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets/validation/images'
-OUTPUT_DIR = "/model_output/"
+DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets/validation/images/'
+MODEL_DIR = "model_output/"
 
 # set CHTC writeable cahce directory for pytorch and matplotlib
 os.environ['TORCH_HOME'] = CURRENT_PATH + '/.cache/torch'
@@ -58,8 +58,7 @@ annot_files = filelist.copy()
 annot_files.sort()
 
 # Validate
-predictions_dir = DIRECTORY + OUTPUT_DIR
-models_dir = OUTPUT_DIR
+predictions_dir = DIRECTORY + MODEL_DIR
 
 # Load model and compute probabilities
 model = mnmodel.MicronucleiModel(
@@ -67,7 +66,7 @@ model = mnmodel.MicronucleiModel(
     data_dir=CURRENT_PATH + '/annotated_mn_datasets/'
 )
 model_name = 'DinoMN.pth'
-model.load(f'{CURRENT_PATH}/annotated_mn_datasets{OUTPUT_DIR}{model_name}')
+model.load(f'{CURRENT_PATH}/annotated_mn_datasets/{MODEL_DIR}{model_name}')
 
 
 for i in tqdm(range(len(annot_files))):
@@ -111,7 +110,7 @@ for i in tqdm(range(len(annot_files))):
     probabilities = model.predict(im, stride=1, step=STEP, batch_size=PREDICTION_BATCH) # has model.eval() & with torch.no_grad()
     e = time.time()
     wandb.log({'Inference Time': e-s})
-    filename = predictions_dir + imid + '._probabilities'
+    filename = os.path.join(CURRENT_PATH, 'annotated_mn_datasets', MODEL_DIR) + imid + '._probabilities'
     
     mn_pred = probabilities[0,:,:] > THRESHOLD
     labeled_mn = skimage.morphology.label(mn_pred)

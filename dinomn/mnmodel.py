@@ -142,6 +142,8 @@ class MicronucleiModel(torch.nn.Module):
                 patch_size=self.patch_size,
                 gaussian=self.gaussian
             )
+        else:
+            raise OSError(f"Training directory is empty: '{self.train_dir}'")
         
         if len(os.listdir(self.val_dir)) > 0:
             self.validation_set = mnds.MicronucleiDataset(
@@ -152,14 +154,11 @@ class MicronucleiModel(torch.nn.Module):
                 patch_size=self.patch_size,
                 gaussian=self.gaussian
             )
-            self.need_validation_set = True
         else:
-            self.need_validation_set = False 
+            raise OSError(f"Validation directory is empty: '{self.val_dir}'")
        
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
-        
-        if self.need_validation_set:
-            self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
+        self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
         self.model = detection.DetectionModel(device=self.device, finetune=finetune)
     
@@ -199,10 +198,6 @@ class MicronucleiModel(torch.nn.Module):
             
             # Loss function   
             Y = (y.to(self.device) > 0).float() # convert to binary (0 & 1)
-            # Y = Y.unsqueeze(dim=1)
-            
-            # decoder_params = torch.cat([x.view(-1) for x in self.model.decoder.parameters()])
-            # l2_regularization = l2_penalty * torch.norm(decoder_params, 2)
             loss = self.loss_fn(p, Y)
             
             # Training instructions
@@ -213,11 +208,10 @@ class MicronucleiModel(torch.nn.Module):
             
             # Report results
             running_loss += loss.item()
-            # print(f'{i} iteration: running loss: {running_loss:.3f}')
         return running_loss / (i+1)
     
     
-    def train(self, epochs, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
+    def train(self, epochs, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6, wandb_mode=False):
         self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune, weight_decay=weight_decay)
         
         best_vloss = 1_000_000.
@@ -231,51 +225,44 @@ class MicronucleiModel(torch.nn.Module):
             avg_loss = self.train_one_epoch()
             
             # Update learning rate per epoch
-            wandb.log({'current_lr':self.optimizer.param_groups[0]['lr']})
+            if wandb_mode:
+                wandb.log({'current_lr':self.optimizer.param_groups[0]['lr']})
             self.scheduler.step()
             
 
             # Validation
-            if self.need_validation_set:
-                running_vloss = 0.0
-                self.model.eval()
-                with torch.no_grad():
-                    for i, vdata in enumerate(self.val_dataloader):
-                        vin, vls = vdata
-                        vout = self.model(vin.to(self.device))
-                        # output resolution: 128
-                        vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
-                        Y = (vls.to(self.device) > 0).float() # convert to binary (0 & 1)
-                        
-                        vloss = self.loss_fn(vout, Y)
-                        running_vloss += vloss
-                avg_vloss = running_vloss / (i+1)
+            running_vloss = 0.0
+            self.model.eval()
+            with torch.no_grad():
+                for i, vdata in enumerate(self.val_dataloader):
+                    vin, vls = vdata
+                    vout = self.model(vin.to(self.device))
+                    # output resolution: 128
+                    vout = torch.nn.functional.interpolate(vout, (self.patch_size, self.patch_size))
+                    Y = (vls.to(self.device) > 0).float() # convert to binary (0 & 1)
+                    
+                    vloss = self.loss_fn(vout, Y)
+                    running_vloss += vloss
+            avg_vloss = running_vloss / (i+1)
             C = time.time() - T
-            # print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
+            print(f'LOSS: Training: {avg_loss} - Validation: {avg_vloss} - Time: {C:.2f} secs') # comment only for grid search purpose
 
             # log metrics to wandb
-            if self.need_validation_set:
+            if wandb_mode:
                 wandb.log({"Train_loss":avg_loss, "Validation_loss":avg_vloss}, commit=False) # avoid logging more steps than num of epochs
-            else:
-                wandb.log({"Train_loss":avg_loss})
 
         C = time.time() - start
-        # print(f"\nTrainined finished in {C:.2f} seconds") # comment out for grid search
-        wandb.log({"Train time":C})
+        print(f"\nTrainined finished in {C:.2f} seconds") # comment out for grid search
+        if wandb_mode:
+            wandb.log({"Train time":C})
 
         
     def save(self, outdir="models/", model_name='model'):
-        # if self.need_validation_set: # LOO
-        #     output_file = self.data_dir + outdir + self.validation_files[0].replace('phenotype_outlines.png','pth')
-        # # elif self.gaussian:
-        # #     output_file = f'{self.data_dir}{outdir}best_model_gaussian.pth'
-        # else: # train with all images
         output_file = f'{self.data_dir}{outdir}{model_name}.pth'
         torch.save(self.model.state_dict(), output_file)
 
         
     def load(self, model_path):
-        # model_file = model_dir + model_name
         self.model = detection.DetectionModel(device=self.device)
         self.model.load_state_dict(torch.load(model_path))
         self.model.to(self.device)

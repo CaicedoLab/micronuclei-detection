@@ -11,8 +11,8 @@ import dinomn.mnmodel as mnmodel
 
 
 CURRENT_PATH = os.getcwd()
-DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets'
-OUTPUT_DIR = "/model_output/"
+DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets/'
+OUTPUT_DIR = "model_output/"
 
 if not os.path.exists(DIRECTORY + OUTPUT_DIR):
     os.makedirs(DIRECTORY + OUTPUT_DIR)
@@ -50,8 +50,8 @@ ARCHITECTURE = "DinoMN: test new retraining code"
 
 OVERSAMPLE = 'Yes' # if Yes, save model name as DinoMN_oversampled
 
-num_training_files = len(os.listdir(DIRECTORY + '/train/images'))
-num_validation_files = len(os.listdir(DIRECTORY + '/validation/images'))
+num_training_files = len(os.listdir(DIRECTORY + 'train/images'))
+num_validation_files = len(os.listdir(DIRECTORY + 'validation/images'))
 wandb.init(
     project='Best_Experiment',
     config={
@@ -93,7 +93,8 @@ model.train(epochs=EPOCHS,
             learning_rate=LR, 
             loss_fn=LOSS_FN, 
             finetune=FINETUNE,
-            weight_decay=WEIGHT_DECAY
+            weight_decay=WEIGHT_DECAY,
+            wandb_mode=True
 )
 
 
