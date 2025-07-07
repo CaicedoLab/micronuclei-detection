@@ -24,7 +24,7 @@ model.load(model_path)
 #  Make predictions
 ```python
 import skimage
-import numpy
+import numpy as np
 
 STEP = 64 # recommended value
 PREDICTION_BATCH = 4
@@ -48,24 +48,26 @@ evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=m
 ```
 
 # Train your own specialist model
-- Expected training images extension: `.phenotype.tif`, nuclei mask extension: `.nuclei-clean.tif`, ground truth mask: `phenotype_outlines.png`.
+- Expected file extension of training images and nuclei masks is `.tif`, the corresponding training masks is `.png`. Following values are tunable if retraining on non-micronucleus subcellular datasets.
+- Combined loss = 0.8 * subcellular loss + 0.2 nuclei loss.
 
 ```python
-files = os.listdir(DIRECTORY)
-annot_files = [x for x in filelist if x.endswith('.phenotype_outlines.png')]
-
-validation_files = os.listdir(CURRENT_PATH + '/all_data_micronuclei_no_rescale/validation')
-validation_files = [x for x in validation_files if x.endswith('.phenotype_outlines.png')]
-
 device = f"cuda:{gpu}" if torch.cuda.is_available() else 'cpu'
-
 model = mnmodel.MicronucleiModel(
     device=device,
     data_dir=DIRECTORY,
-    training_files=training_files, 
-    validation_files=validation_filelist,
     patch_size=256,
+    scale_factor=1.0,
     gaussian=True
+)
+
+model.train(epochs=20, 
+            batch_size=4, 
+            learning_rate=1e-5, 
+            loss_fn='combined',
+            finetune=True,
+            weight_decay=1e-6,
+            wandb_mode=False
 )
 
 model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
