@@ -6,8 +6,10 @@ build-backend = "hatchling.build"
 packages = ["dinomn"]
 
 [project]
-name = "dinomn"
-version = "0.0.0.1"
+name = "dinomn" # pypi
+version = "0.0.0.2" # pypi
+# name = "dinomn-test" # test-pypi
+# version = "0.0.0.1" # test-pypi
 authors = [
     {name="Yifan Ren", email="yren86@wisc.edu"},
     {name="Vidit Agrawal", email="vidit.agrawal@wisc.edu"},
