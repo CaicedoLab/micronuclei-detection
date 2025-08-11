@@ -72,3 +72,21 @@ model.train(epochs=20,
 
 model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 ```
+
+# Reproducing DinoMN Training Experiment
+```bash
+git pull git@github.com:CaicedoLab/micronuclei-detection.git
+cd micronuclei-detection
+```
+
+Training
+```python
+python3 training_model.py --path 'path to micronuclei dataset' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --finetune --gaussian
+```
+
+Prediction
+```python
+python3 prediction.py --path 'path to micronuclei dataset' --gpu 0 --step 64 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1
+```
+
+Add `--wandb_mode` if user wants to show loss on Weights and Biases
