@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-packages = ["dinomn"]
+packages = ["mndino"]
 
 [project]
-name = "dinomn" # pypi
-version = "0.0.0.2" # pypi
-# name = "dinomn-test" # test-pypi
+name = "mn-DINO" # pypi
+version = "0.0.0.1" # pypi
+# name = "mn-dino-test" # test-pypi
 # version = "0.0.0.1" # test-pypi
 authors = [
     {name="Yifan Ren", email="yren86@wisc.edu"},
@@ -18,7 +18,7 @@ authors = [
     {name="Emil Peter Thrane Hertz", email="emil.hertz@cpr.ku.dk"},
     {name="Juan Caicedo", email="juan.caicedo@wisc.edu"}
 ]
-description = "DinoMN: test"
+description = "mn-DINO: test"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
