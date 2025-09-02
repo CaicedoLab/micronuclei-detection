@@ -1,21 +1,21 @@
-# Micronuclei Detection
-Detecting micronuclei in images using Transformer Networks
+# mn-DINO
+Detecting micronuclei in images using DINOv2 backbone
 
 Refer to [tutorial notebook](tutorials/) for real examples
 
 
 # Install package
 ```bash
-pip install dinomn
+pip install mn-dino
 ```
 
 # Load the model
 ```python
 import torch
-from dinomn import mnmodel
+from mn-dino import mnmodel
 from huggingface_hub import hf_hub_download
 
-model_path = hf_hub_download(repo_id="yifanren/DinoMN", filename="DinoMN.pth")
+model_path = hf_hub_download(repo_id="yifanren/mn-DINO", filename="latest.pth")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = mnmodel.MicronucleiModel(device=device)
 model.load(model_path)
@@ -41,7 +41,7 @@ nuclei_predictions = probabilities[1,:,:] > THRESHOLD
 # Evaluation
 ```python
 import skimage
-from dinomn import evaluation
+from mn-dino import evaluation
 
 mn_gt = skimage.io.imread(your_annotated_image_path) # make sure the annotations are masks
 evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
@@ -73,7 +73,7 @@ model.train(epochs=20,
 model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 ```
 
-# Reproducing DinoMN Training Experiment
+# Reproducing mn-dino Training Experiment
 ```bash
 git pull git@github.com:CaicedoLab/micronuclei-detection.git
 cd micronuclei-detection
