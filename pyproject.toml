@@ -18,7 +18,7 @@ authors = [
     {name="Emil Peter Thrane Hertz", email="emil.hertz@cpr.ku.dk"},
     {name="Juan Caicedo", email="juan.caicedo@wisc.edu"}
 ]
-description = "mn-DINO: test"
+description = "mn-DINO: [add description of the project later]"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
