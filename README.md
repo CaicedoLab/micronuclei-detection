@@ -1,4 +1,4 @@
-# mndino
+# mn-DINO
 Detecting micronuclei in images using DINOv2 backbone
 
 Refer to [tutorial notebook](tutorials/) for real examples
