@@ -1,4 +1,4 @@
-# mn-DINO
+# mndino
 Detecting micronuclei in images using DINOv2 backbone
 
 Refer to [tutorial notebook](tutorials/) for real examples
@@ -6,16 +6,16 @@ Refer to [tutorial notebook](tutorials/) for real examples
 
 # Install package
 ```bash
-pip install mn-dino
+pip install mndino
 ```
 
 # Load the model
 ```python
 import torch
-from mn-dino import mnmodel
+from mndino import mnmodel
 from huggingface_hub import hf_hub_download
 
-model_path = hf_hub_download(repo_id="yifanren/mn-DINO", filename="latest.pth")
+model_path = hf_hub_download(repo_id="yifanren/mndino", filename="latest.pth")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = mnmodel.MicronucleiModel(device=device)
 model.load(model_path)
@@ -41,7 +41,7 @@ nuclei_predictions = probabilities[1,:,:] > THRESHOLD
 # Evaluation
 ```python
 import skimage
-from mn-dino import evaluation
+from mndino import evaluation
 
 mn_gt = skimage.io.imread(your_annotated_image_path) # make sure the annotations are masks
 evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
@@ -73,7 +73,7 @@ model.train(epochs=20,
 model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 ```
 
-# Reproducing mn-dino Training Experiment
+# Reproducing mndino Training Experiment
 ```bash
 git pull git@github.com:CaicedoLab/micronuclei-detection.git
 cd micronuclei-detection
