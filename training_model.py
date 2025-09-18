@@ -93,9 +93,9 @@ if __name__ == '__main__':
         'Number of validation images':num_validation_files
     }
     wandb.init(
-        project='Best_Experiment',
+        project='mnDINO-experiment',
         config=config,
-        name=f'model version 3 (test new predict())',
+        name=f'training',
         mode=WANDB_MODE
     )
 

@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
     
-    # Sample command: python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --step 64 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 -w
+    # Sample command: python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --step 64 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
     
     # Fixed Hyperparameters
     PATCH_SIZE = 256
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     SCALE_FACTOR = args.scale
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'mnDINO Inference (v3)'
+    ARCHITECTURE = f'mnDINO Inference'
 
 
     # avoid files starting with . when untarring in CHTC
@@ -97,7 +97,7 @@ if __name__ == '__main__':
                 'Number of validation images':len(annot_files)
             }
         wandb.init(
-            project='Best_Experiment',
+            project='mnDINO-experiment',
             config=config,
             name=f'{imid}',
             reinit=True
