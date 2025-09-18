@@ -28,14 +28,13 @@ import torch.nn.functional as F
 
 class DetectionModel(torch.nn.Module):
     
-    def __init__(self, device, stride=8, finetune=False):
+    def __init__(self, device, stride=8):
         super().__init__()
         
-        self.finetune = finetune
-        
         # pretrained backbone has patch size 14 x 14, split into 14 row and columns
-        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
-
+        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+        self.feature_extractor = torch.hub.load(repo_or_dir='facebookresearch/dinov3', model='dinov3_vits16', weights = '/mnt/cephfs/mir/jcaicedo/projects/micronuclei_detection/dinov3_weights/dinov3_vits16_pretrain.pth').to(device) # dinov3
+        
         def conv_block(in_channels, out_channels, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128]):
             return torch.nn.Sequential(
                 torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
@@ -79,86 +78,48 @@ class DetectionModel(torch.nn.Module):
         self.classifier.to(device)
                 
     def forward(self, x):
-        # Skip Connections
-        if self.finetune:
-            x = torch.nn.functional.interpolate(x, (448,448))
-            x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
-            H,W = 32,32
-            
-            memory = x # original image features 1,1024,384
-            x = x.reshape(B,H,W,C).permute(0,3,1,2) # 1,384,32,32
-            
-            # Pixel Decoder Block 1
-            x = self.upscale1(x)
-            residual1 = x
-            x = self.block1(x)
-            residual2 = x
-            x = self.block2(x) + residual1
-            x = self.block3(x) + residual2 # x: 1,192,64,64
-            
-            # Transformer Decoder Block 1
-            B,C,H,W = x.shape
-            target = x.reshape(B,H*W,C)
-            memory = self.projection1(memory)
-            transformer_x = self.transformer_decoder1(tgt=target, memory=memory)
-            # 1,4096,192
-            
-            # Pixel Decoder Block 2
-            x = self.upscale2(x)
-            residual3 = x
-            x = self.block4(x)
-            residual4 = x
-            x = self.block5(x) + residual3
-            x = self.block6(x) + residual4 # x: 1,96,128,128
-            
-            
-            transformer_x = self.projection2(transformer_x)
-            transformer_x = transformer_x.reshape(B,96,H,W)
-            transformer_x = F.interpolate(x, (128,128))
-            
-            # Sum up information
-            x = x + transformer_x
-            
-            x = self.classifier(x)
-        else:
-            with torch.no_grad():
-                x = torch.nn.functional.interpolate(x, (448,448))
-                x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
-            B,T,C = x.shape # Batch, Token size * Toekn size, Channel
-            H,W = 32,32
-            memory = x # original image features
-            x = x.reshape(B,H,W,C).permute(0,3,1,2) # 1,384,32,32
-  
-            # Pixel Decoder Block 1
-            x = self.upscale1(x)
-            residual1 = x
-            x = self.block1(x)
-            residual2 = x
-            x = self.block2(x) + residual1
-            x = self.block3(x) + residual2 # x: 1,192,64,64
-            
-            # Transformer Decoder Block 1
-            B,C,H,W = x.shape
-            target = x.reshape(B,H*W,C)
-            memory = self.projection1(memory)
-            transformer_x = self.transformer_decoder1(tgt=target, memory=memory)
-            
-            # Pixel Decoder Block 2
-            x = self.upscale2(x)
-            residual3 = x
-            x = self.block4(x)
-            residual4 = x
-            x = self.block5(x) + residual3
-            x = self.block6(x) + residual4 # x: 1,96,128,128
-            
-            transformer_x = self.projection2(transformer_x)
-            transformer_x = transformer_x.reshape(B,96,H,W)
-            transformer_x = F.interpolate(x, (128,128))
-            
-            # Sum up information
-            x = x + transformer_x
-            
-            x = self.classifier(x)
+        # x = torch.nn.functional.interpolate(x, (448,448)) # dinov2
+        x = torch.nn.functional.interpolate(x, (512, 512)) # dinov3
+        # finetuning, using frozen backbone: with torch.no_grad()
+        x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
+        
+        B,T,C = x.shape # Batch, Token size * Toekn size, Channel
+        H,W = 32,32
+        
+        memory = x # original image features B,1024,384
+        x = x.reshape(B,H,W,C).permute(0,3,1,2) # B,384,32,32
+        
+        # Pixel Decoder Block 1
+        x = self.upscale1(x)
+        residual1 = x
+        x = self.block1(x)
+        residual2 = x
+        x = self.block2(x) + residual1
+        x = self.block3(x) + residual2 # x: 1,192,64,64
+        
+        # Transformer Decoder Block 1
+        B,C,H,W = x.shape
+        target = x.reshape(B,H*W,C)
+        memory = self.projection1(memory)
+        transformer_x = self.transformer_decoder1(tgt=target, memory=memory)
+        # 1,4096,192
+        
+        # Pixel Decoder Block 2
+        x = self.upscale2(x)
+        residual3 = x
+        x = self.block4(x)
+        residual4 = x
+        x = self.block5(x) + residual3
+        x = self.block6(x) + residual4 # x: 1,96,128,128
+        
+        
+        transformer_x = self.projection2(transformer_x)
+        transformer_x = transformer_x.reshape(B,96,H,W)
+        transformer_x = F.interpolate(x, (128,128))
+        
+        # Sum up information
+        x = x + transformer_x
+        
+        x = self.classifier(x)
         
         return x

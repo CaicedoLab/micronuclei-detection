@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 import sys
 sys.path.append('../')
-import dinomn.mnds as mnds
-import dinomn.detection as detection
+import mndino.mnds as mnds
+import mndino.detection as detection
 
         
 class DiceLoss(torch.nn.Module):
@@ -131,7 +131,7 @@ class MicronucleiModel(torch.nn.Module):
         
 
         
-    def start_model(self, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6):
+    def start_model(self, batch_size, learning_rate, loss_fn, weight_decay=1e-6):
         if len(os.listdir(self.train_dir)) > 0:
             self.training_set = mnds.MicronucleiDataset(
                 directory=self.train_dir, 
@@ -160,7 +160,7 @@ class MicronucleiModel(torch.nn.Module):
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
-        self.model = detection.DetectionModel(device=self.device, finetune=finetune)
+        self.model = detection.DetectionModel(device=self.device)
     
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
         if loss_fn == 'dice':
@@ -211,8 +211,8 @@ class MicronucleiModel(torch.nn.Module):
         return running_loss / (i+1)
     
     
-    def train(self, epochs, batch_size, learning_rate, loss_fn, finetune=False, weight_decay=1e-6, wandb_mode=False):
-        self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, finetune=finetune, weight_decay=weight_decay)
+    def train(self, epochs, batch_size, learning_rate, loss_fn, weight_decay=1e-6, wandb_mode=False):
+        self.start_model(batch_size=batch_size, learning_rate=learning_rate, loss_fn=loss_fn, weight_decay=weight_decay)
         
         best_vloss = 1_000_000.
 
@@ -289,7 +289,7 @@ class MicronucleiModel(torch.nn.Module):
         ones = np.ones((TOKENS_PER_PATCH, TOKENS_PER_PATCH))
         batch, coords = [], []
 
-        self.model.eval() # finetune not allowed, use pre-trained weights!
+        self.model.eval()
 
         def batch_predict(batch, coords):
             B = torch.cat(batch, axis=0)

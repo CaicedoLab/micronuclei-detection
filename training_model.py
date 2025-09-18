@@ -5,7 +5,7 @@ import os
 import torch
 import argparse
 import wandb
-import dinomn.mnmodel as mnmodel
+import mndino.mnmodel as mnmodel
 
 
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     torch.set_num_threads(8)
 
     parser = argparse.ArgumentParser(
-        description="DinoMN Training",
+        description="mnDINO Training",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
 
@@ -34,14 +34,11 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-5, help='Learning rate for the optimizer.')
     parser.add_argument('--weight_decay', type=float, default=1e-6, help='Weight decay for the optimizer.')
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
-
-    parser.add_argument('--finetune', action='store_true', help='Finetuning the DINOv2 backbone.')
     parser.add_argument('--gaussian', action='store_true', help='Gaussian random size crop for model to learn distortion.')
     parser.add_argument('--edges', action='store_true', help='Recover object edges in training.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
-    parser.set_defaults(finetune=True, gaussian=True, edges=False, wandb_mode=False)
 
-    # Sample command: python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --finetune --gaussian --wandb_mode
+    # Sample command: python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian --wandb_mode
     
     # Fixed value for DINOv2
     PATCH_SIZE = 256
@@ -62,7 +59,6 @@ if __name__ == '__main__':
     WEIGHT_DECAY = args.weight_decay
     SCALE_FACTOR = args.scale
     
-    FINETUNE = args.finetune
     GAUSSIAN = args.gaussian
     EDGES = args.edges
     
@@ -82,8 +78,7 @@ if __name__ == '__main__':
     config = {
         "architecture":ARCHITECTURE,
         "Loss": LOSS_FN,
-        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
-        "fine_tuning":FINETUNE,
+        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc", 
         "training_batch_size":BATCH_SIZE,
         "start_learning_rate":LR,
         "lr_scheduler":"Cosine",
@@ -119,14 +114,13 @@ if __name__ == '__main__':
                 batch_size=BATCH_SIZE, 
                 learning_rate=LR, 
                 loss_fn=LOSS_FN, 
-                finetune=FINETUNE,
                 weight_decay=WEIGHT_DECAY,
                 wandb_mode=True
     )
 
 
     # Save
-    model.save(outdir=OUTPUT_DIR, model_name='DinoMN')
+    model.save(outdir=OUTPUT_DIR, model_name='mnDINO')
 
     # release the resources
     torch.cuda.empty_cache()

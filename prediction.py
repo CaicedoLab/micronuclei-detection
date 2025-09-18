@@ -11,9 +11,9 @@ from tqdm import tqdm
 import argparse
 import numpy as np
 
-import dinomn.mnds as mnds
-import dinomn.mnmodel as mnmodel
-import dinomn.evaluation as evaluation
+import mndino.mnds as mnds
+import mndino.mnmodel as mnmodel
+import mndino.evaluation as evaluation
 
 
 
@@ -24,11 +24,11 @@ if __name__ == '__main__':
     torch.set_num_threads(8)
     
     parser = argparse.ArgumentParser(
-        description="DinoMN Inference",
+        description="mnDINO Inference",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
     
-    parser.add_argument('--path', type=str, help='DinoMN dataset path')
+    parser.add_argument('--path', type=str, help='mnDINO dataset path')
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
     parser.add_argument('--step', type=int, default=64, help='Step size of prediction box, larger value will decrease inference time but harm accuracy.')
     parser.add_argument('--batch_size', type=int, default=4, help='Number of crops from one image that are predicted simultaneously.')
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     SCALE_FACTOR = args.scale
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'DinoMN Inference'
+    ARCHITECTURE = f'mnDINO Inference (v3)'
 
 
     # avoid files starting with . when untarring in CHTC
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         device=device,
         data_dir=DIRECTORY
     )
-    model_name = 'DinoMN.pth'
+    model_name = 'mnDINO.pth'
     model.load(os.path.join(predictions_dir, model_name))
 
 
