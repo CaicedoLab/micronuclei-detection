@@ -65,7 +65,6 @@ model.train(epochs=20,
             batch_size=4, 
             learning_rate=1e-5, 
             loss_fn='combined',
-            finetune=True,
             weight_decay=1e-6,
             wandb_mode=False
 )
