@@ -74,7 +74,7 @@ model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 
 # Reproducing mndino Training Experiment
 ```bash
-git pull git@github.com:CaicedoLab/micronuclei-detection.git
+git clone git@github.com:CaicedoLab/micronuclei-detection.git
 cd micronuclei-detection
 ```
 
