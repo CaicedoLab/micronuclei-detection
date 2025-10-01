@@ -37,10 +37,9 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian', action='store_true', help='Gaussian random size crop for model to learn distortion.')
     parser.add_argument('--edges', action='store_true', help='Recover object edges in training.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
-
-    # Sample command: python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian --wandb_mode
     
-    # Fixed value for DINOv2
+    # Sample command: python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian --wandb_mode
+    # Fixed value
     PATCH_SIZE = 256
     FEATURE_SIZE = 384
     
@@ -67,7 +66,7 @@ if __name__ == '__main__':
     else:
         WANDB_MODE = 'disabled'
 
-    ARCHITECTURE = 'mnDINO Training'
+    ARCHITECTURE = 'mnDINO Training - bicubic architecture'
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
     

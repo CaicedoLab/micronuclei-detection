@@ -78,8 +78,8 @@ class DetectionModel(torch.nn.Module):
         self.classifier.to(device)
                 
     def forward(self, x):
-        x = torch.nn.functional.interpolate(x, (448,448)) # dinov2
-        # x = torch.nn.functional.interpolate(x, (512, 512)) # dinov3
+        # x = torch.nn.functional.interpolate(x, (448,448)) # dinov2
+        x = torch.nn.functional.interpolate(x, (512, 512), mode='bicubic') # dinov3
         
         # finetuning, using frozen backbone: with torch.no_grad()
         x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']
