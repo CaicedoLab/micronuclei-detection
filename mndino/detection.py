@@ -32,8 +32,8 @@ class DetectionModel(torch.nn.Module):
         super().__init__()
         
         # pretrained backbone has patch size 14 x 14, split into 14 row and columns
-        # self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
-        self.feature_extractor = torch.hub.load(repo_or_dir='facebookresearch/dinov3', model='dinov3_vits16', weights = '/mnt/cephfs/mir/jcaicedo/projects/micronuclei_detection/dinov3_weights/dinov3_vits16_pretrain.pth').to(device) # dinov3
+        self.feature_extractor = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_reg').to(device) # dinov2 vit small model
+        # self.feature_extractor = torch.hub.load(repo_or_dir='facebookresearch/dinov3', model='dinov3_vits16', weights = '/mnt/cephfs/mir/jcaicedo/projects/micronuclei_detection/dinov3_weights/dinov3_vits16_pretrain.pth').to(device) # dinov3
         
         def conv_block(in_channels, out_channels, kernel_size=(3,3), padding=(1,1), norm_shape=[96, 128, 128]):
             return torch.nn.Sequential(
@@ -78,8 +78,8 @@ class DetectionModel(torch.nn.Module):
         self.classifier.to(device)
                 
     def forward(self, x):
-        # x = torch.nn.functional.interpolate(x, (448,448)) # dinov2
-        x = torch.nn.functional.interpolate(x, (512, 512), mode='bicubic') # dinov3
+        x = torch.nn.functional.interpolate(x, (448,448)) # dinov2
+        # x = torch.nn.functional.interpolate(x, (512, 512), mode='bicubic') # dinov3
         
         # finetuning, using frozen backbone: with torch.no_grad()
         x = self.feature_extractor.forward_features(x)['x_norm_patchtokens']

@@ -57,7 +57,7 @@ if __name__ == '__main__':
     SCALE_FACTOR = args.scale
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'mnDINO Inference - bicubic interpolation'
+    ARCHITECTURE = f'mnDINO Inference'
 
 
     # avoid files starting with . when untarring in CHTC

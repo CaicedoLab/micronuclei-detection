@@ -66,7 +66,7 @@ if __name__ == '__main__':
     else:
         WANDB_MODE = 'disabled'
 
-    ARCHITECTURE = 'mnDINO Training - bicubic architecture'
+    ARCHITECTURE = 'mnDINO Training'
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
     
