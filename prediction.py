@@ -29,15 +29,16 @@ if __name__ == '__main__':
     )
     
     parser.add_argument('--path', type=str, help='mnDINO dataset path')
+    parser.add_argument('--test_set', action='store_true', help='Turn on to choose test set, otherwise validation set')
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
-    parser.add_argument('--step', type=int, default=64, help='Step size of prediction box, larger value will decrease inference time but harm accuracy.')
+    parser.add_argument('--step', type=int, default=32, help='Step size of prediction box, larger value will decrease inference time but harm accuracy.')
     parser.add_argument('--batch_size', type=int, default=4, help='Number of crops from one image that are predicted simultaneously.')
     parser.add_argument('--prob_threshold', type=float, default=0.5, help='Probability threshold to classify if each pixel is micronucleus.')
     parser.add_argument('--iou_threshold', type=float, default=0.1, help='IOU threshold, 0.1 suggested for subcellular structures.')
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
     
-    # Sample command: python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --step 64 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
+    # Sample command: python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --test_set --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
     
     # Fixed Hyperparameters
     PATCH_SIZE = 256
@@ -46,22 +47,30 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     DIRECTORY = args.path
-    VALIDATION_PATH = os.path.join(DIRECTORY, 'validation/images')
+    
+    if_test = args.test_set
+    if if_test:
+        architecture_label = 'test'
+        PATH = os.path.join(DIRECTORY, 'test/images')
+    else:
+        architecture_label = 'validation'
+        PATH = os.path.join(DIRECTORY, 'validation/images')
+        
     MODEL_DIR = "model_output/"
 
     GPU = args.gpu
-    STEP = args.step # 64 is the best
+    STEP = args.step # 32 is the best
     THRESHOLD = args.prob_threshold
     IoU_THRESHOLD = args.iou_threshold # for micronuclei
     PREDICTION_BATCH = args.batch_size    
     SCALE_FACTOR = args.scale
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'mnDINO Inference'
+    ARCHITECTURE = f'mnDINO Inference - {architecture_label}'
 
 
     # avoid files starting with . when untarring in CHTC
-    files = os.listdir(VALIDATION_PATH)
+    files = os.listdir(PATH)
     filelist = [file for file in files if not file.startswith('.')]
     annot_files = filelist.copy()
     annot_files.sort()
@@ -104,10 +113,10 @@ if __name__ == '__main__':
         )
         
         # Load image and annotations
-        im = mnds.read_image(os.path.join(VALIDATION_PATH, validation_file), scale=SCALE_FACTOR)
+        im = mnds.read_image(os.path.join(PATH, validation_file), scale=SCALE_FACTOR)
         im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
         
-        mn_gt = mnds.read_image(os.path.join(VALIDATION_PATH.replace('images', 'mn_masks'), validation_file.replace('.tif', '.png')), scale=SCALE_FACTOR)
+        mn_gt = mnds.read_image(os.path.join(PATH.replace('images', 'mn_masks'), validation_file.replace('.tif', '.png')), scale=SCALE_FACTOR)
         mn_gt = mn_gt > 0 # convert to boolean (binary mask)
         
         # Document inference time
