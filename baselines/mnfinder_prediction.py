@@ -26,12 +26,14 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
     
-    parser.add_argument('--path', type=str, help='mnDINO dataset path') # '/scr/yren/annotated_mn_datasets/test/images/'
+    parser.add_argument('--train_path', type=str, help='mnDINO dataset path') # '/scr/yren/annotated_mn_datasets/test/images/'
     parser.add_argument('--save_path', type=str, help='Path to save MNFinder predictions')
-
+    parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
+    
     args = parser.parse_args()
-    PATH = args.path
+    PATH = args.train_path
     SAVE_PATH = args.save_path
+    WANDB_MODE = args.wandb_mode
 
     files = os.listdir(PATH)
     filelist = [file for file in files if not file.startswith('.')] # avoid files starting with . when untarring in CHTC
@@ -45,17 +47,19 @@ if __name__ == '__main__':
     
     for i in tqdm(range(len(filelist))):
         imid = filelist[i].split('.')[0]
-    
-        wandb.init(
-            project='mnDINO-experiment',
-            config={
-                "architecture":ARCHITECTURE,
-                'model':'MNFinder',
-                'scale_factor':SCALE_FACTOR
-            },
-            name=f'{imid}',
-            reinit=True
-        )
+
+        if WANDB_MODE:
+            wandb.init(
+                project='mnDINO-experiment',
+                config={
+                    "architecture":ARCHITECTURE,
+                    'model':'MNFinder',
+                    'scale_factor':SCALE_FACTOR
+                },
+                name=f'{imid}',
+                reinit=True,
+                mode='online'
+            )
 
         im_path = os.path.join(PATH, imid + '.tif')
         im = skimage.io.imread(im_path)
@@ -66,8 +70,9 @@ if __name__ == '__main__':
         s = time.time()
         labels = combined_model.predict(im)
         e = time.time()
-        wandb.log({'Inference Time': e-s})
-        
+        if WANDB_MODE:
+            wandb.log({'Inference Time': e-s})
+        print(f'{imid}, Inference time used: {e - s: .2f}')
         micro_labels = labels[:,:,1]
 
         # save_path = CURRENT_PATH + '/mnfinder_predictions/'
@@ -81,7 +86,7 @@ if __name__ == '__main__':
         mn_gt = skimage.io.imread(gt_path)
         if SCALE_FACTOR != 1.0:
             mn_gt = skimage.transform.rescale(mn_gt, scale=SCALE_FACTOR)
-        evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, wandb_mode=True)
+        evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
 
     # release the resources
     wandb.finish()

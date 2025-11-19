@@ -60,11 +60,7 @@ if __name__ == '__main__':
     
     GAUSSIAN = args.gaussian
     EDGES = args.edges
-    
-    if args.wandb_mode:
-        WANDB_MODE = 'online'
-    else:
-        WANDB_MODE = 'disabled'
+    WANDB_MODE = args.wandb_mode
 
     ARCHITECTURE = 'mnDINO Training'
 
@@ -73,30 +69,30 @@ if __name__ == '__main__':
     num_training_files = len(os.listdir(DIRECTORY + 'train/images'))
     num_validation_files = len(os.listdir(DIRECTORY + 'validation/images'))
 
-
-    config = {
-        "architecture":ARCHITECTURE,
-        "Loss": LOSS_FN,
-        "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc", 
-        "training_batch_size":BATCH_SIZE,
-        "start_learning_rate":LR,
-        "lr_scheduler":"Cosine",
-        "scale_factor":'Trained on non-scaled images',
-        "epochs": EPOCHS,
-        "feature_size":FEATURE_SIZE,
-        "patch_size":PATCH_SIZE,
-        "weight_decay":WEIGHT_DECAY,
-        "gaussian":GAUSSIAN,
-        'edges':EDGES,
-        'Number of training images':num_training_files,
-        'Number of validation images':num_validation_files
-    }
-    wandb.init(
-        project='mnDINO-experiment',
-        config=config,
-        name=f'training',
-        mode=WANDB_MODE
-    )
+    if WANDB_MODE:
+        config = {
+            "architecture":ARCHITECTURE,
+            "Loss": LOSS_FN,
+            "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc", 
+            "training_batch_size":BATCH_SIZE,
+            "start_learning_rate":LR,
+            "lr_scheduler":"Cosine",
+            "scale_factor":'Trained on non-scaled images',
+            "epochs": EPOCHS,
+            "feature_size":FEATURE_SIZE,
+            "patch_size":PATCH_SIZE,
+            "weight_decay":WEIGHT_DECAY,
+            "gaussian":GAUSSIAN,
+            'edges':EDGES,
+            'Number of training images':num_training_files,
+            'Number of validation images':num_validation_files
+        }
+        wandb.init(
+            project='mnDINO-experiment',
+            config=config,
+            name=f'training',
+            mode='online'
+        )
 
     # Create model
     model = mnmodel.MicronucleiModel(

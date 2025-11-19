@@ -50,10 +50,10 @@ if __name__ == '__main__':
     
     if_test = args.test_set
     if if_test:
-        architecture_label = 'test'
+        which_set = 'test'
         PATH = os.path.join(DIRECTORY, 'test/images')
     else:
-        architecture_label = 'validation'
+        which_set = 'validation'
         PATH = os.path.join(DIRECTORY, 'validation/images')
         
     MODEL_DIR = "model_output/"
@@ -64,9 +64,10 @@ if __name__ == '__main__':
     IoU_THRESHOLD = args.iou_threshold # for micronuclei
     PREDICTION_BATCH = args.batch_size    
     SCALE_FACTOR = args.scale
+    WANDB_MODE = args.wandb_mode
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'mnDINO Inference - {architecture_label}'
+    ARCHITECTURE = f'mnDINO Inference - {which_set} set'
 
 
     # avoid files starting with . when untarring in CHTC
@@ -91,26 +92,28 @@ if __name__ == '__main__':
         validation_file = annot_files[i]
         imid = validation_file.split('.')[0]
         
-        config = {
-                "architecture":ARCHITECTURE,
-                "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
-                "prediction_batch_size":PREDICTION_BATCH,
-                "scale_factor":'Predict on images that are not scaled',
-                'step':STEP,
-                "feature_size":FEATURE_SIZE,
-                "patch_size":PATCH_SIZE,
-                "probability_threshold":THRESHOLD,
-                "IoU_threshold":IoU_THRESHOLD,
-                "dilation":0,
-                "gaussian":'gaussian not need for prediction',
-                'Number of validation images':len(annot_files)
-            }
-        wandb.init(
-            project='mnDINO-experiment',
-            config=config,
-            name=f'{imid}',
-            reinit=True
-        )
+        if WANDB_MODE:
+            config = {
+                    "architecture":ARCHITECTURE,
+                    "Loss Weight": "all default, sam ratio (0.95focal+0.05dice) + gamma=2, etc",
+                    "prediction_batch_size":PREDICTION_BATCH,
+                    "scale_factor":'Predict on images that are not scaled',
+                    'step':STEP,
+                    "feature_size":FEATURE_SIZE,
+                    "patch_size":PATCH_SIZE,
+                    "probability_threshold":THRESHOLD,
+                    "IoU_threshold":IoU_THRESHOLD,
+                    "dilation":0,
+                    "gaussian":'gaussian not need for prediction',
+                    'Number of validation images':len(annot_files)
+                }
+            wandb.init(
+                project='mnDINO-experiment',
+                config=config,
+                name=f'{imid}',
+                reinit=True,
+                mode='online'
+            )
         
         # Load image and annotations
         im = mnds.read_image(os.path.join(PATH, validation_file), scale=SCALE_FACTOR)
@@ -123,7 +126,9 @@ if __name__ == '__main__':
         s = time.time()
         probabilities = model.predict(im, stride=1, step=STEP, batch_size=PREDICTION_BATCH) # has model.eval() & with torch.no_grad()
         e = time.time()
-        wandb.log({'Inference Time': e-s})
+        if WANDB_MODE:
+            wandb.log({'Inference Time': e-s})
+        print(f'{imid}, Inference time used: {e - s: .2f}')
         filename = os.path.join(DIRECTORY, MODEL_DIR) + imid + '._probabilities'
         
         mn_pred = probabilities[0,:,:] > THRESHOLD
@@ -134,7 +139,7 @@ if __name__ == '__main__':
                                     predictions=labeled_mn, 
                                     gt=mn_gt, 
                                     intersection_ratio=IoU_THRESHOLD,
-                                    wandb_mode=True)
+                                    wandb_mode=WANDB_MODE)
         
         # save labeled matrices
         np.save(filename, labeled_mn)
