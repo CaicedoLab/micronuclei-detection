@@ -206,7 +206,7 @@ if __name__ == '__main__':
         )
         
         im = skimage.io.imread(PRED_PATH + test_files[i])
-        H,W = im.shape
+        H,W = im.shape # 256,256
         
         # Document Inference Time
         if FROZEN:
@@ -230,7 +230,7 @@ if __name__ == '__main__':
                     model_type=model_type,
                     device=device,
                     tile_shape=(1024, 1024), 
-                    halo=(256, 256)
+                    halo=(256, 256) # step size
                 )
             else:
                 prediction = run_automatic_instance_segmentation(
@@ -238,7 +238,8 @@ if __name__ == '__main__':
                     ndim=2,
                     checkpoint_path=best_checkpoint,
                     model_type=model_type,
-                    device=device
+                    device=device,
+                    halo=(256, 256) # step size, probably smaller than image size
                 )
             e = time.time()
             if WANDB_MODE:

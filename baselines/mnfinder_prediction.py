@@ -6,7 +6,7 @@ from tqdm import tqdm
 import argparse
 import time
 import numpy as np
-# import pandas as pd
+import pandas as pd
 # from tifffile import tifffile
 import skimage
 import wandb
@@ -26,13 +26,17 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
     
-    parser.add_argument('--train_path', type=str, help='mnDINO dataset path') # '/scr/yren/annotated_mn_datasets/test/images/'
-    parser.add_argument('--save_path', type=str, help='Path to save MNFinder predictions')
+    parser.add_argument('--eval_path', type=str, help='mnDINO dataset path', 
+                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/test/images/')
+    parser.add_argument('--save_path', type=str, help='Path to save MNFinder predictions', 
+                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/mnfinder_predictions')
+    parser.add_argument('--scale', action='store_true', help='Align to 20X MNFinder microscope setting')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
     
     args = parser.parse_args()
-    PATH = args.train_path
+    PATH = args.eval_path
     SAVE_PATH = args.save_path
+    IF_SCALE = args.scale
     WANDB_MODE = args.wandb_mode
 
     files = os.listdir(PATH)
@@ -43,10 +47,21 @@ if __name__ == '__main__':
     combined_model = MNClassifier.get_model() # default: combined
 
     ARCHITECTURE = "MNFinder predictions"
-    SCALE_FACTOR = 1.0
+    
+    if IF_SCALE:
+        ARCHITECTURE = ARCHITECTURE + ' (Aligned to MNFinder Microscope)'
+        df = pd.read_csv('/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/metadata.csv')
+
     
     for i in tqdm(range(len(filelist))):
         imid = filelist[i].split('.')[0]
+        
+        if IF_SCALE:
+            mag = df.loc[(df.filenames == filelist[i]) & (df.split == 'test'), 'magnification'].item()
+            micron = df.loc[(df.filenames == filelist[i]) & (df.split == 'test'), 'micron'].item()
+            SCALE_FACTOR = round((20/13) / (mag/micron), 1)
+        else:
+            SCALE_FACTOR = 1.0
 
         if WANDB_MODE:
             wandb.init(
@@ -74,13 +89,10 @@ if __name__ == '__main__':
             wandb.log({'Inference Time': e-s})
         print(f'{imid}, Inference time used: {e - s: .2f}')
         micro_labels = labels[:,:,1]
-
-        # save_path = CURRENT_PATH + '/mnfinder_predictions/'
         
         np.save(os.path.join(SAVE_PATH, imid + '._probabilities.npy'), micro_labels)
 
         # evaluation
-        # mn_gt = mnds.read_image(PATH.replace('images', 'mn_masks'), imid, 'phenotype_outlines.png', scale=SCALE_FACTOR)
         # MNFinder tensorflow conflicts with torch, do not import mnds file.
         gt_path = os.path.join(PATH.replace('images', 'mn_masks'), imid + '.png')
         mn_gt = skimage.io.imread(gt_path)
