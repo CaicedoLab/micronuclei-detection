@@ -26,7 +26,7 @@ model.load(model_path)
 import skimage
 import numpy as np
 
-STEP = 64 # recommended value
+STEP = 32 # recommended value
 PREDICTION_BATCH = 4
 THRESHOLD = 0.5
 
@@ -80,12 +80,32 @@ cd micronuclei-detection
 
 Training
 ```python
-python3 training_model.py --path 'path to micronuclei dataset' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian
+python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian
 ```
 
-Prediction
+Making Predictions on Test Set
 ```python
-python3 prediction.py --path 'path to micronuclei dataset' --gpu 0 --step 64 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1
+python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --test_set  --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1
 ```
 
-Add `--wandb_mode` if user wants to show loss on Weights and Biases
+Turn on `--test_set` if user wants to evaluate on test set, turn it off to select validation set
+Turn on `--wandb_mode` if user wants to show loss on Weights and Biases
+
+
+# Reproducing Baseline experiments
+MNFinder Evaluation
+```python
+# Run reformant mnfinder images script
+python3 mnfinder_prediction.py --train_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/annotated_mn_datasets/mnfinder_predictions/' --wandb_mode
+
+python3 cellpose_prediction.py --gpu 0 --train_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/annotated_mn_datasets/cellpose_predictions/' --wandb_mode
+```
+
+use frozen microSAM (better performance)
+```python
+python3 reformat_microsam_images.py --load_path '/scr/yren/annotated_mn_datasets/' --save_path '/scr/yren/microsam_data/'
+
+python3 microsam_prediction.py --gpu 0 --train_path '/scr/yren/microsam_data/test/' --pred_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --wandb_mode
+```
+
+Turn on `--frozen` if user wants to use frozen backbone to make predictions
