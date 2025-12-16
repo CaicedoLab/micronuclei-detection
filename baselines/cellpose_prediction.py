@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/train/images')
     parser.add_argument('--save_path', type=str, help='Path to save Cellpose predictions', 
                         default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/cellpose_predictions')
-    parser.add_argument('--frozen', action='store_true', help='specify to use frozen backbone')
+    parser.add_argument('--finetune', action='store_true', default=False, help='specify to use frozen backbone')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
 
     args = parser.parse_args()
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     
     TRAIN_PATH = args.train_path
     SAVE_PATH = args.save_path
-    FROZEN = args.frozen
+    FINETUNE = args.finetune
     WANDB_MODE = args.wandb_mode
     
     SCALE_FACTOR = 1.0
@@ -58,20 +58,21 @@ if __name__ == '__main__':
     
    
     model = models.CellposeModel(gpu=True, model_type='cyto3', device=torch.device(device))
-    channels = [0,0] # grayscale in cellpose 3
-    model_path, train_losses, test_losses = train.train_seg(
-        model.net,
-        train_data=imgs,
-        train_labels=gts,
-        channels=channels,              # Use first channel (grayscale)
-        channel_axis=None,            # No channel dimension in your data
-        weight_decay=0.1,
-        learning_rate=1e-5,
-        n_epochs=100,
-        min_train_masks=1,
-        model_name=f"cellpose_finetuned.pth",
-        save_path=SAVE_PATH
-    )
+    if FINETUNE:
+        channels = [0,0] # grayscale in cellpose 3
+        model_path, train_losses, test_losses = train.train_seg(
+            model.net,
+            train_data=imgs,
+            train_labels=gts,
+            channels=channels,              # Use first channel (grayscale)
+            channel_axis=None,            # No channel dimension in your data
+            weight_decay=0.1,
+            learning_rate=1e-5,
+            n_epochs=100,
+            min_train_masks=1,
+            model_name=f"cellpose_finetuned.pth",
+            save_path=SAVE_PATH
+        )
     
 
     MICRON_AREA_THRESHOLD = 300 # 300 is the best cut-off

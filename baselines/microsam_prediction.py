@@ -33,10 +33,10 @@ if __name__ == '__main__':
     )
     
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
-    parser.add_argument('--train_path', type=str, help='mnDINO dataset path', default='/scr/yren/microsam_data/test/')
+    parser.add_argument('--test_path', type=str, help='mnDINO dataset path', default='/scr/yren/microsam_data/test/')
     parser.add_argument('--pred_path', type=str, help='folder of images that microSAM predicts', default='/scr/yren/annotated_mn_datasets/test/images/')
     parser.add_argument('--save_path', type=str, help='Path to save microSAM predictions', default='/scr/yren/microsam_data/microsam_predictions/')
-    parser.add_argument('--frozen', action='store_true', help='specify to use frozen backbone')
+    parser.add_argument('--frozen', action='store_true', default=False, help='specify to use frozen backbone')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
 
     args = parser.parse_args()
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     torch.cuda.set_device(GPU)
     device = f"cuda" if torch.cuda.is_available() else "cpu"  # the device/GPU used for training
     
-    PATH = args.train_path
+    PATH = args.test_path
     PRED_PATH = args.pred_path
     SAVE_PATH = args.save_path
     if args.wandb_mode:

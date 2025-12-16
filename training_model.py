@@ -36,9 +36,9 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
     parser.add_argument('--gaussian', action='store_true', help='Gaussian random size crop for model to learn distortion.')
     parser.add_argument('--edges', action='store_true', help='Recover object edges in training.')
-    parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
+    parser.add_argument('-w', '--wandb_mode', action='store_true', default=False, help='Choose to turn on Weights and Biases')
     
-    # Sample command: python3 training_model.py --path '/scr/yren/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian --wandb_mode
+    # Sample command: python3 training_model.py --path '/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian --wandb_mode
     # Fixed value
     PATCH_SIZE = 256
     FEATURE_SIZE = 384
@@ -47,8 +47,8 @@ if __name__ == '__main__':
 
     DIRECTORY = args.path
     OUTPUT_DIR = "model_output/"
-    if not os.path.exists(DIRECTORY + OUTPUT_DIR):
-        os.makedirs(DIRECTORY + OUTPUT_DIR)
+    if not os.path.exists(os.path.join(DIRECTORY, OUTPUT_DIR)):
+        os.makedirs(os.path.join(DIRECTORY, OUTPUT_DIR))
         
     GPU = args.gpu
     EPOCHS = args.epochs
@@ -66,10 +66,10 @@ if __name__ == '__main__':
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
     
-    num_training_files = len(os.listdir(DIRECTORY + 'train/images'))
-    num_validation_files = len(os.listdir(DIRECTORY + 'validation/images'))
 
     if WANDB_MODE:
+        num_training_files = len(os.listdir(os.path.join(DIRECTORY, 'train/images')))
+        num_validation_files = len(os.listdir(os.path.join(DIRECTORY, 'validation/images')))
         config = {
             "architecture":ARCHITECTURE,
             "Loss": LOSS_FN,

@@ -38,7 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
     
-    # Sample command: python3 prediction.py --path '/scr/yren/annotated_mn_datasets/' --test_set --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
+    # Sample command: python3 prediction.py --path '/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/' --test_set --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
     
     # Fixed Hyperparameters
     PATCH_SIZE = 256

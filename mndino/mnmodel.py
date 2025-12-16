@@ -257,8 +257,8 @@ class MicronucleiModel(torch.nn.Module):
             wandb.log({"Train time":C})
 
         
-    def save(self, outdir="models/", model_name='model'):
-        output_file = f'{self.data_dir}{outdir}{model_name}.pth'
+    def save(self, outdir="model_output", model_name='model'):
+        output_file = os.path.join(self.data_dir, outdir, model_name + '.pth')
         torch.save(self.model.state_dict(), output_file)
 
         
