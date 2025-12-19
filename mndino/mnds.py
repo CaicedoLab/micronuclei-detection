@@ -87,7 +87,7 @@ def detection_transforms(patch, target):
 # DATASET CLASS
 class MicronucleiDataset(Dataset):
     
-    def __init__(self, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, gaussian=False):
+    def __init__(self, directory, mode="random", scale_factor=1.0, patch_size=256, stride=8, feature_size=384, edges=False, transform=None, gaussian=False, oversample=True):
         # Store parameters
         self.patch_size = patch_size
         self.stride = stride
@@ -97,6 +97,7 @@ class MicronucleiDataset(Dataset):
         self.transform = transform
         self.shuffled = 0
         self.gaussian = gaussian
+        self.oversample = oversample
         self.directory = directory
         
         # Load images and annotations
@@ -110,6 +111,7 @@ class MicronucleiDataset(Dataset):
             im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
             mni = read_micronuclei_annotations(directory, fname)
             mnm = read_image(os.path.join(directory, 'mn_masks', fname.replace('.tif', '.png')), scale_factor) # expect micronuclei annotation in png format
+            mnm = mnm > 0 # its a labeled matrix, convert to binary mask
             nuc = read_nuclei_masks(directory, fname) # nuclei mask in tif format
             self.images[imid] = {"image":im, "micro":mnm, "nuclei":nuc, "loc":mni}
             
@@ -137,11 +139,12 @@ class MicronucleiDataset(Dataset):
             patches_per_image = (W // PS) * (H // PS)
             
             # Oversample more crops
-            subset = df.loc[df.filenames == imid + '.tif', 'datasets'].iloc[0]
-            if subset in ['HeLa', 'RPE1']:
-                patches_per_image = patches_per_image * 7
-            elif subset in ['BBBC039', 'mnfinder_train']:
-                patches_per_image = patches_per_image * 5
+            if self.oversample:
+                subset = df.loc[df.filenames == imid + '.tif', 'datasets'].iloc[0]
+                if subset in ['HeLa', 'RPE1']:
+                    patches_per_image = patches_per_image * 7
+                elif subset in ['BBBC039', 'mnfinder_train']:
+                    patches_per_image = patches_per_image * 5
                 
             # print(f'{imid}: height - {H}, width - {W}, patches - {patches_per_image}')
             X = np.random.randint(0, W - PS, patches_per_image)

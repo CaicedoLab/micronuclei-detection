@@ -116,15 +116,16 @@ class MicronucleiModel(torch.nn.Module):
     # pipeline_tag = "DinoMN-Model"
     # license = "mit"
     
-    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=True):
+    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=True, oversample=True):
         super().__init__()
         
         self.data_dir = data_dir
         self.device = device
-        self.edges = edges
+        self.edges = edges # False is suggested
         self.patch_size = patch_size
         self.scale_factor = scale_factor
         self.gaussian = gaussian
+        self.oversample = oversample
         
         self.train_dir = os.path.join(data_dir, 'train')
         self.val_dir = os.path.join(data_dir, 'validation')
@@ -140,7 +141,8 @@ class MicronucleiModel(torch.nn.Module):
                 transform=mnds.detection_transforms,
                 scale_factor=self.scale_factor,
                 patch_size=self.patch_size,
-                gaussian=self.gaussian
+                gaussian=self.gaussian,
+                oversample=self.oversample
             )
         else:
             raise OSError(f"Training directory is empty: '{self.train_dir}'")

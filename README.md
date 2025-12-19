@@ -55,7 +55,7 @@ cd micronuclei-detection
 
 Training
 ```python
-python3 training_model.py --path 'path to datasets' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-6 --scale 1.0 --gaussian
+python3 training_model.py --path 'path to datasets' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-5 --scale 1.0 --gaussian
 ```
 
 Making Predictions on Test Set
@@ -77,7 +77,8 @@ model = mnmodel.MicronucleiModel(
     data_dir=DIRECTORY,
     patch_size=256,
     scale_factor=1.0,
-    gaussian=True
+    gaussian=True,
+    oversample=False # oversample option is only applied to the micronuclei dataset presented in manuscript
 )
 
 model.train(epochs=20, 
