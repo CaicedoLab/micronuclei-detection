@@ -2,7 +2,6 @@ import os
 import numpy as np
 import skimage
 from tqdm import tqdm
-from tqdm import tqdm
 import argparse
 
 
@@ -11,8 +10,10 @@ parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
 
-parser.add_argument('--load_path', type=str, help='annotated micronuclei datasets')
-parser.add_argument('--save_path', type=str, help='path to save cropped images for training microSAM')
+parser.add_argument('--load_path', type=str, help='annotated micronuclei datasets',
+                    default='/scr/data/annotated_mn_datasets/')
+parser.add_argument('--save_path', type=str, help='path to save cropped images for training microSAM',
+                    default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/microsam_data/')
 
 args = parser.parse_args()
 load_path = args.load_path

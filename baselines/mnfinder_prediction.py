@@ -27,11 +27,11 @@ if __name__ == '__main__':
     )
     
     parser.add_argument('--test_path', type=str, help='mnDINO dataset path', 
-                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/test/images/')
+                        default='/scr/data/annotated_mn_datasets/test/images/')
     parser.add_argument('--save_path', type=str, help='Path to save MNFinder predictions', 
                         default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/mnfinder_predictions')
-    parser.add_argument('--scale', action='store_true', help='Align to 20X MNFinder microscope setting')
-    parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
+    parser.add_argument('--scale', action='store_true', default=False, help='Align to 20X MNFinder microscope setting')
+    parser.add_argument('-w', '--wandb_mode', action='store_true',default=False, help='Choose to turn on Weights and Biases')
     
     args = parser.parse_args()
     PATH = args.test_path

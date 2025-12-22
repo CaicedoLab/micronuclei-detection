@@ -43,7 +43,7 @@ nuclei_predictions = probabilities[1,:,:] > THRESHOLD
 import skimage
 from mndino import evaluation
 
-mn_gt = skimage.io.imread(your_annotated_image_path) # make sure the annotations are masks
+mn_gt = skimage.io.imread(your_annotated_image_path)
 evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
 ```
 
@@ -55,12 +55,12 @@ cd micronuclei-detection
 
 Training
 ```python
-python3 training_model.py --path 'path to datasets' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-5 --scale 1.0 --gaussian
+python3 training_model.py --path '/scr/data/annotated_mn_datasets/' --gpu 0 --epochs 20 --batch_size 4 --loss_fn 'combined' --lr 1e-5 --scale 1.0 --gaussian
 ```
 
 Making Predictions on Test Set
 ```python
-python3 prediction.py --path 'path to datasets' --test_set  --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1
+python3 prediction.py --path '/scr/data/annotated_mn_datasets/' --test_set  --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1
 ```
 
 Turn on `--test_set` if user wants to evaluate on test set, turn it off to select validation set. <br>
@@ -96,17 +96,17 @@ model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 MNFinder Evaluation
 ```python
 # Run reformant mnfinder images script
-python3 mnfinder_prediction.py --test_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/annotated_mn_datasets/mnfinder_predictions/' --wandb_mode
+python3 mnfinder_prediction.py --test_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/data/annotated_mn_datasets/mnfinder_predictions/' --wandb_mode
 
 # Retraining Cellpose3
-python3 cellpose_prediction.py --gpu 0 --train_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/annotated_mn_datasets/cellpose_predictions/' --finetune --wandb_mode
+python3 cellpose_prediction.py --gpu 0 --train_path '/scr/data/annotated_mn_datasets/train/images/' --save_path '/scr/data/annotated_mn_datasets/cellpose_predictions/' --finetune --wandb_mode
 ```
 
 use frozen microSAM (better performance)
 ```python
 python3 reformat_microsam_images.py --load_path '/scr/yren/annotated_mn_datasets/' --save_path '/scr/yren/microsam_data/'
 
-python3 microsam_prediction.py --gpu 0 --test_path '/scr/yren/microsam_data/test/' --pred_path '/scr/yren/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --frozen --wandb_mode
+python3 microsam_prediction.py --gpu 0 --train_path '/scr/data/microsam_data/train/' --pred_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --frozen --wandb_mode
 ```
 
-Turn on `--frozen` if user wants to use frozen backbone to make predictions
+Turn on `--frozen` if user wants to use frozen microSAM backbone to make predictions

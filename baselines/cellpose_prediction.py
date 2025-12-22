@@ -23,7 +23,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
     parser.add_argument('--train_path', type=str, help='mnDINO dataset path', 
-                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/train/images')
+                        default='/scr/data/annotated_mn_datasets/train/images')
     parser.add_argument('--save_path', type=str, help='Path to save Cellpose predictions', 
                         default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/cellpose_predictions')
     parser.add_argument('--finetune', action='store_true', default=False, help='specify to use frozen backbone')
@@ -55,6 +55,7 @@ if __name__ == '__main__':
     TEST_PATH = TRAIN_PATH.replace('train', 'test')
     test_files = os.listdir(TEST_PATH)
     test_filelist = [file for file in test_files if not file.startswith('.')]
+    test_filelist.sort()
     
    
     model = models.CellposeModel(gpu=True, model_type='cyto3', device=torch.device(device))

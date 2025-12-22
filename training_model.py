@@ -10,13 +10,6 @@ import mndino.mnmodel as mnmodel
 
 
 if __name__ == '__main__':
-    
-    # CURRENT_PATH = os.getcwd()
-    # DIRECTORY = CURRENT_PATH + '/annotated_mn_datasets/'
-    # OUTPUT_DIR = "model_output/"
-    # if not os.path.exists(DIRECTORY + OUTPUT_DIR):
-    #     os.makedirs(DIRECTORY + OUTPUT_DIR)
-
     # set CHTC writeable cahce directory for pytorch and matplotlib
     os.environ['TORCH_HOME'] = os.getcwd() + '/.cache/torch'
     torch.set_num_threads(8)
@@ -37,7 +30,6 @@ if __name__ == '__main__':
     parser.add_argument('--gaussian', action='store_true', default=False, help='Gaussian random size crop for model to learn distortion.')
     parser.add_argument('--edges', action='store_true', default=False, help='Recover object edges in training.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', default=False, help='Choose to turn on Weights and Biases')
-    parser.add_argument('--tag', type=str, default='default', help='Weights and Biases Run tags') # delete after reproduction
     
     # Sample command: python3 training_model.py --path '/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/' --gpu 0 --epochs 20 --loss_fn 'combined' --lr 1e-5 --scale 1.0 --gaussian --wandb_mode
     # Fixed value
@@ -45,7 +37,6 @@ if __name__ == '__main__':
     FEATURE_SIZE = 384
     
     args = parser.parse_args()
-    TAGS = args.tag
 
     DIRECTORY = args.path
     OUTPUT_DIR = "model_output/models"
@@ -93,8 +84,8 @@ if __name__ == '__main__':
             project='mnDINO-experiment',
             config=config,
             name=f'training',
-            mode='online',
-            tags=[TAGS] # delete after reproduction
+            mode='online'
+            # tags=[TAGS]
         )
 
     # Create model
@@ -118,7 +109,7 @@ if __name__ == '__main__':
 
 
     # Save
-    model.save(outdir=OUTPUT_DIR, model_name='mnDINO')
+    model.save(outdir=OUTPUT_DIR, model_name=f'mnDINO')
 
     # release the resources
     torch.cuda.empty_cache()

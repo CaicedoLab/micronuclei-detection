@@ -1,0 +1,22 @@
+name: cellpose3
+channels:
+- conda-forge
+- nodefaults
+dependencies:
+- python 3.12.*
+- python >3.11,<3.13
+- dust >=1.2.3,<2
+- ipykernel *
+- pip
+- pip:
+  - cellpose==3.1.0
+  - numpy>=2.0.2, <3
+  - pandas>=2.3.3, <3
+  - torch>=2.9.0, <3
+  - matplotlib>=3.10.7, <4
+  - seaborn>=0.13.2, <0.14
+  - tqdm>=4.67.1, <5
+  - scikit-image>=0.25.2, <0.26
+  - scikit-learn>=1.7.2, <2
+  - wandb>=0.22.3, <0.23
+
