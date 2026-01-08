@@ -95,18 +95,24 @@ model.save(outdir=OUTPUT_DIR, model_name=MODEL_NAME)
 # Reproducing Baseline experiments
 MNFinder Evaluation
 ```python
-# Run reformant mnfinder images script
 python3 mnfinder_prediction.py --test_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/data/annotated_mn_datasets/mnfinder_predictions/' --wandb_mode
+```
 
-# Retraining Cellpose3
+Cellpose Finetuned Evaluation
+```python
 python3 cellpose_prediction.py --gpu 0 --train_path '/scr/data/annotated_mn_datasets/train/images/' --save_path '/scr/data/annotated_mn_datasets/cellpose_predictions/' --finetune --wandb_mode
 ```
 
-use frozen microSAM (better performance)
+Frozen microSAM backbone (better performance)
+```python
+python3 microsam_prediction.py --gpu 0 --train_path '/scr/data/microsam_data/train/' --pred_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --frozen --wandb_mode
+```
+
+Retrain microSAM
 ```python
 python3 reformat_microsam_images.py --load_path '/scr/yren/annotated_mn_datasets/' --save_path '/scr/yren/microsam_data/'
 
-python3 microsam_prediction.py --gpu 0 --train_path '/scr/data/microsam_data/train/' --pred_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --frozen --wandb_mode
+python3 microsam_prediction.py --gpu 0 --train_path '/scr/data/microsam_data/train/' --pred_path '/scr/data/annotated_mn_datasets/test/images/' --save_path '/scr/yren/microsam_data/microsam_predictions/' --wandb_mode
 ```
 
 Turn on `--frozen` if user wants to use frozen microSAM backbone to make predictions

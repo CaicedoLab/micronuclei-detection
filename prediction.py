@@ -29,7 +29,7 @@ if __name__ == '__main__':
     )
     
     parser.add_argument('--path', type=str, help='mnDINO dataset path')
-    parser.add_argument('--test_set', action='store_true', help='Turn on to choose test set, otherwise validation set')
+    parser.add_argument('--test_set', action='store_true', default=False, help='Turn on to choose test set, otherwise validation set')
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
     parser.add_argument('--step', type=int, default=32, help='Step size of prediction box, larger value will decrease inference time but harm accuracy.')
     parser.add_argument('--batch_size', type=int, default=4, help='Number of crops from one image that are predicted simultaneously.')
@@ -37,7 +37,8 @@ if __name__ == '__main__':
     parser.add_argument('--iou_threshold', type=float, default=0.1, help='IOU threshold, 0.1 suggested for subcellular structures.')
     parser.add_argument('--scale', type=float, default=1.0, help='Scale factor for aligning microscopy magnification.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
-    
+    # parser.add_argument('--tags', type=str, default='default', help='WanDB run tags')
+    # parser.add_argument('-i', '--iteration', type=int, help='Iterated experiment index')
     # Sample command: python3 prediction.py --path '/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/data_to_publish/annotated_mn_datasets/' --test_set --gpu 0 --step 32 --batch_size 4 --prob_threshold 0.5 --iou_threshold 0.1 --scale 1 --wandb_mode
     
     # Fixed Hyperparameters
@@ -45,6 +46,8 @@ if __name__ == '__main__':
     FEATURE_SIZE = 384
     
     args = parser.parse_args()
+    # TAGS = args.tags
+    # INDEX = args.iteration
 
     DIRECTORY = args.path
     
@@ -86,7 +89,8 @@ if __name__ == '__main__':
         device=device,
         data_dir=DIRECTORY
     )
-    model_name = f'mnDINO.pth'
+    model_name = f'mnDINO_v1.pth'
+    # model_name = f'mnDINO_{INDEX}.pth'
     model.load(os.path.join(models_dir, model_name))
 
 
@@ -114,7 +118,7 @@ if __name__ == '__main__':
                 config=config,
                 name=f'{imid}',
                 reinit=True,
-                mode='online'
+                mode='online',
                 # tags=[TAGS]
             )
         
