@@ -99,7 +99,7 @@ def measures_at(threshold, IOU):
     return f1, prec, rec, TP, FP, FN
 
 
-def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, wandb_mode=False):
+def segmentation_report(predictions, gt, intersection_ratio=0.1, wandb_mode=False):
     # start = time.time()
     pi = skimage.morphology.label(predictions)
     gti = skimage.morphology.label(gt)
@@ -107,12 +107,12 @@ def segmentation_report(imid, predictions, gt, intersection_ratio=0.1, wandb_mod
     if IoUs.size == 0:
         prec = 0.0
         rec = 0.0
-        print(f'{imid}, Precision: {prec}, Recall: {rec}')
+        return prec, rec
         if wandb_mode:
             wandb.log({'Precision':prec, 'Recall':rec})
     else:
         f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
-        print(f'{imid}, Precision: {prec}, Recall: {rec}')
+        return prec, rec
         if wandb_mode:
             wandb.log({'Precision':prec, 'Recall':rec})
 

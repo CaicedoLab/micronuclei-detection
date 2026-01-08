@@ -142,12 +142,12 @@ if __name__ == '__main__':
         labeled_mn = skimage.morphology.label(mn_pred)
         labeled_mn = np.asarray(labeled_mn, dtype='uint16') # if saving as img
         
-        evaluation.segmentation_report(imid=imid, 
-                                    predictions=labeled_mn, 
-                                    gt=mn_gt, 
-                                    intersection_ratio=IoU_THRESHOLD,
-                                    wandb_mode=WANDB_MODE)
+        precision, recall = evaluation.segmentation_report(predictions=labeled_mn, 
+                                                           gt=mn_gt, 
+                                                           intersection_ratio=IoU_THRESHOLD,
+                                                           wandb_mode=WANDB_MODE)
         
+        print(f'{imid}, Precision: {precision}, Recall: {recall}')
         # save labeled matrices
         np.save(filename, labeled_mn)
         

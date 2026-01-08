@@ -44,7 +44,7 @@ import skimage
 from mndino import evaluation
 
 mn_gt = skimage.io.imread(your_annotated_image_path)
-evaluation.segmentation_report(imid='My_Image', predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1)
+precision, recall = evaluation.segmentation_report(predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1, wandb_mode=False)
 ```
 
 # Reproducing mndino Training & Evaluation Experiments

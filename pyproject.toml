@@ -7,7 +7,7 @@ packages = ["mndino"]
 
 [project]
 name = "mndino" # pypi
-version = "0.0.0.2" # pypi
+version = "0.0.0.3" # pypi
 # name = "mn-dino-test" # test-pypi
 # version = "0.0.0.1" # test-pypi
 authors = [
