@@ -15,7 +15,7 @@ import torch
 from mndino import mnmodel
 from huggingface_hub import hf_hub_download
 
-model_path = hf_hub_download(repo_id="yifanren/mn-DINO", filename="mnDINO_v1.pth")
+model_path = hf_hub_download(repo_id="CaicedoLab/mnDINO", filename="mnDINO_v1.pth")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = mnmodel.MicronucleiModel(device=device)
 model.load(model_path)
