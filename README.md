@@ -56,7 +56,7 @@ mn_gt = skimage.io.imread(your_annotated_image_path)
 precision, recall = evaluation.segmentation_report(predictions=mn_predictions, gt=mn_gt, intersection_ratio=0.1, wandb_mode=False)
 ```
 
-# Reproducing mndino Training & Evaluation Experiments
+# Reproducing mnDino Training & Evaluation Experiments
 ```bash
 git clone git@github.com:CaicedoLab/micronuclei-detection.git
 cd micronuclei-detection
