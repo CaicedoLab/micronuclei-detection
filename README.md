@@ -1,8 +1,17 @@
-# mn-DINO
-Detecting micronuclei in images using DINOv2 backbone
+# mnDINO: Accurate and robust segmentation of micronuclei with vision transformer networks
 
-Refer to [tutorial notebook](tutorials/) for real examples
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)
+[![Pytorch](https://img.shields.io/badge/Pytorch-2.5-red.svg)](https://pytorch.org/get-started/previous-versions/#v25)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
+This repo provides the PyTorch source code of our paper: [mnDINO: Accurate and robust segmentation of micronuclei with vision transformer networks](). The pre-trained model is publicly available on [huggingface](https://huggingface.co/CaicedoLab/mnDINO), and the dataset can be downloaded through [Bioimage Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD2809).
+
+# Abstract 
+Here we present a segmentation model, mnDINO, to segment micronuclei in DNA stained images under diverse experimental conditions with very high efficiency and accuracy. To train this model, we collected a heterogeneous set of images with more than five thousand annotated micronuclei. Trained with this diverse resource, the mnDINO model improves the accuracy of MN segmentation, and exhibits strong generalization across microscopes and cell lines. The dataset, code, and pre-trained model are made publicly available to facilitate future research in MN biology.
+
+Refer to [tutorial notebook](tutorials/) for example usage of mnDINO model
+![A description of the picture](figures/architecture.png)
 
 # Install package
 ```bash
