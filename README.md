@@ -13,12 +13,13 @@ Here we present a segmentation model, mnDINO, to segment micronuclei in DNA stai
 Refer to [tutorial notebook](tutorials/) for example usage of mnDINO model
 ![A description of the picture](figures/architecture.png)
 
-# Install package
+# Usage
+### Install Package
 ```bash
 pip install mndino
 ```
 
-# Load the model
+### Load the model
 ```python
 import torch
 from mndino import mnmodel
@@ -30,7 +31,7 @@ model = mnmodel.MicronucleiModel(device=device)
 model.load(model_path)
 ```
 
-#  Make predictions
+### Make predictions
 ```python
 import skimage
 import numpy as np
@@ -47,7 +48,7 @@ mn_predictions = probabilities[0,:,:] > THRESHOLD
 nuclei_predictions = probabilities[1,:,:] > THRESHOLD
 ```
 
-# Evaluation
+### Evaluation
 ```python
 import skimage
 from mndino import evaluation
