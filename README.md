@@ -3,7 +3,6 @@
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)
 [![Pytorch](https://img.shields.io/badge/Pytorch-2.5-red.svg)](https://pytorch.org/get-started/previous-versions/#v25)
-[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
 This repo provides the PyTorch source code of our paper: [mnDINO: Accurate and robust segmentation of micronuclei with vision transformer networks](). The pre-trained model is publicly available on [huggingface](https://huggingface.co/CaicedoLab/mnDINO), and the dataset can be downloaded through [Bioimage Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD2809).
 
