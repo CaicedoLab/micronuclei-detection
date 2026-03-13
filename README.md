@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)
 [![Pytorch](https://img.shields.io/badge/Pytorch-2.5-red.svg)](https://pytorch.org/get-started/previous-versions/#v25)
 
-This repo provides the PyTorch source code of our paper: [mnDINO: Accurate and robust segmentation of micronuclei with vision transformer networks](). The pre-trained model is publicly available on [huggingface](https://huggingface.co/CaicedoLab/mnDINO), and the dataset can be downloaded through [Bioimage Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD2809).
+This repo provides the PyTorch source code of our paper: [mnDINO: Accurate and robust segmentation of micronuclei with vision transformer networks](https://www.biorxiv.org/content/10.64898/2026.03.09.710648v2). The pre-trained model is publicly available on [huggingface](https://huggingface.co/CaicedoLab/mnDINO), and the dataset can be downloaded through [Bioimage Archive](https://www.ebi.ac.uk/biostudies/bioimages/studies/S-BIAD2809).
 
 The mnDINO model is specifically designed for highly efficient and accurate micronuclei segmentation in DNA-stained images across diverse experimental conditions. The model outputs both micronuclei and nuclei segmentation masks simultaneously. To accelerate future research in micronucleus (MN) biology. The dataset, code, and pre-trained model are made publicly available to facilitate future research in micronucleus (MN) biology.
 
