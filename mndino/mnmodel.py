@@ -112,11 +112,22 @@ class CombinedFocalDiceLoss(torch.nn.Module):
         
 
 class MicronucleiModel(torch.nn.Module):
-    # repo_url = "yifanren/DinoMN"
-    # pipeline_tag = "DinoMN-Model"
-    # license = "mit"
     
-    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=True, oversample=True):
+    def __init__(self, device, data_dir='', edges=False, patch_size=256, scale_factor=1.0, gaussian=True, oversample=True, model_type='dino'):
+        """
+        Args:
+            device       : torch.device to run on.
+            data_dir     : root directory containing 'train' and 'validation' sub-folders.
+            edges        : whether to use edge features (False recommended).
+            patch_size   : spatial size of image patches.
+            scale_factor : image rescaling factor.
+            gaussian     : apply Gaussian weighting to patches.
+            oversample   : oversample minority class patches.
+            model_type   : architecture to use.
+                           'dino'  – original DINOv2-based DetectionModel (default).
+                           'unet'  – vanilla 2-D U-Net baseline.
+        """
+        
         super().__init__()
         
         self.data_dir = data_dir
@@ -126,6 +137,7 @@ class MicronucleiModel(torch.nn.Module):
         self.scale_factor = scale_factor
         self.gaussian = gaussian
         self.oversample = oversample
+        self.model_type = model_type
         
         self.train_dir = os.path.join(data_dir, 'train')
         self.val_dir = os.path.join(data_dir, 'validation')
@@ -162,7 +174,16 @@ class MicronucleiModel(torch.nn.Module):
         self.train_dataloader = DataLoader(self.training_set, batch_size=batch_size, shuffle=True)
         self.val_dataloader = DataLoader(self.validation_set, batch_size=4, shuffle=False)
         
-        self.model = detection.DetectionModel(device=self.device)
+        if self.model_type == 'dino':
+            self.model = detection.DetectionModel(device=self.device)
+        elif self.model_type == 'unet':
+            self.model = detection.UNet2D(
+                in_channels=3,
+                out_channels=2,
+                base_filters=64,
+                depth=5,
+                device=self.device,
+            )
     
         # self.loss_fn = torch.nn.BCEWithLogitsLoss()
         if loss_fn == 'dice':
@@ -171,7 +192,10 @@ class MicronucleiModel(torch.nn.Module):
             self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
         elif loss_fn == 'combined':
             # Use all default parameters, gamma = 2 so far is good
-            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
+            
+            # test Mic 0.5 weights (alpha) Nuc 0.5 (beta)
+            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.5, dice_beta=0.5, smoothing=1e-5)
+            # self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9)
         
@@ -265,7 +289,16 @@ class MicronucleiModel(torch.nn.Module):
 
         
     def load(self, model_path):
-        self.model = detection.DetectionModel(device=self.device)
+        if self.model_type == 'dino':
+            self.model = detection.DetectionModel(device=self.device)
+        elif self.model_type == 'unet':
+            self.model = detection.UNet2D(
+                in_channels=3,
+                out_channels=2,
+                base_filters=64,
+                depth=5,
+                device=self.device,
+            )
         self.model.load_state_dict(torch.load(model_path))
         self.model.to(self.device)
         

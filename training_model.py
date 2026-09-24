@@ -11,7 +11,7 @@ import mndino.mnmodel as mnmodel
 
 if __name__ == '__main__':
     # set CHTC writeable cahce directory for pytorch and matplotlib
-    os.environ['TORCH_HOME'] = os.getcwd() + '/.cache/torch'
+    # os.environ['TORCH_HOME'] = os.getcwd() + '/.cache/torch'
     torch.set_num_threads(8)
 
     parser = argparse.ArgumentParser(
@@ -21,6 +21,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--path', type=str, help='Micronuclei dataset path')
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
+    parser.add_argument('--model_type', default='dino', choices=['dino', 'unet'], help='Choose model type over DINO-based architecture or simple 2D Unet.')
     parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs.')
     parser.add_argument('--batch_size', type=int, default=4, help='Training batch size.')
     parser.add_argument('--loss_fn', type=str, default='combined', choices=['dice', 'focal','combined'], help='Loss function.')
@@ -47,6 +48,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(DIRECTORY, OUTPUT_DIR))
         
     GPU = args.gpu
+    MODEL_TYPE = args.model_type
     EPOCHS = args.epochs
     BATCH_SIZE = args.batch_size # best training batch size
     LOSS_FN = args.loss_fn
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     EDGES = args.edges
     WANDB_MODE = args.wandb_mode
 
-    ARCHITECTURE = 'mnDINO Training'
+    ARCHITECTURE = f'mnDINO ({MODEL_TYPE}) Training'
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
     
@@ -88,7 +90,6 @@ if __name__ == '__main__':
             config=config,
             name=f'training',
             mode='online',
-            # tags=[TAGS, '/scr path']
         )
 
     # Create model
@@ -98,7 +99,8 @@ if __name__ == '__main__':
         patch_size=PATCH_SIZE,
         scale_factor=SCALE_FACTOR,
         edges=EDGES, # False, this will recover the input edges, reducing performance
-        gaussian=GAUSSIAN
+        gaussian=GAUSSIAN,
+        model_type=MODEL_TYPE
     )
 
     # Train
@@ -107,7 +109,7 @@ if __name__ == '__main__':
                 learning_rate=LR, 
                 loss_fn=LOSS_FN, 
                 weight_decay=WEIGHT_DECAY,
-                wandb_mode=True
+                wandb_mode=WANDB_MODE
     )
 
 

@@ -20,7 +20,7 @@ import mndino.evaluation as evaluation
 if __name__ == '__main__':
 
     # set CHTC writeable cahce directory for pytorch and matplotlib
-    os.environ['TORCH_HOME'] = os.getcwd() + '/.cache/torch'
+    # os.environ['TORCH_HOME'] = os.getcwd() + '/.cache/torch'
     torch.set_num_threads(8)
     
     parser = argparse.ArgumentParser(
@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', type=str, help='mnDINO dataset path')
     parser.add_argument('--test_set', action='store_true', default=False, help='Turn on to choose test set, otherwise validation set')
     parser.add_argument('--gpu', type=int, default=0, help='GPU device index.')
+    parser.add_argument('--model_type', default='dino', choices=['dino', 'unet'], help='Choose model type over DINO-based architecture or simple 2D Unet.')
     parser.add_argument('--step', type=int, default=32, help='Step size of prediction box, larger value will decrease inference time but harm accuracy.')
     parser.add_argument('--batch_size', type=int, default=4, help='Number of crops from one image that are predicted simultaneously.')
     parser.add_argument('--prob_threshold', type=float, default=0.5, help='Probability threshold to classify if each pixel is micronucleus.')
@@ -63,6 +64,7 @@ if __name__ == '__main__':
     PRED_DIR = 'model_output/'
 
     GPU = args.gpu
+    MODEL_TYPE = args.model_type
     STEP = args.step # 32 is the best
     THRESHOLD = args.prob_threshold
     IoU_THRESHOLD = args.iou_threshold # for micronuclei
@@ -71,14 +73,13 @@ if __name__ == '__main__':
     WANDB_MODE = args.wandb_mode
 
     device = f"cuda:{GPU}" if torch.cuda.is_available() else 'cpu'
-    ARCHITECTURE = f'mnDINO Inference - {which_set} set'
+    ARCHITECTURE = f'mnDINO Inference ({MODEL_TYPE}) - {which_set} set'
 
 
     # avoid files starting with . when untarring in CHTC
     files = os.listdir(PATH)
     filelist = [file for file in files if not file.startswith('.')]
-    annot_files = filelist.copy()
-    annot_files.sort()
+    annot_files = sorted(filelist.copy())
 
     # Validate
     models_dir = os.path.join(DIRECTORY, MODEL_DIR)
@@ -87,11 +88,12 @@ if __name__ == '__main__':
     # Load model and compute probabilities
     model = mnmodel.MicronucleiModel(
         device=device,
-        data_dir=DIRECTORY
+        data_dir=DIRECTORY,
+        model_type=MODEL_TYPE
     )
     model_name = f'mnDINO_v1.pth'
     # model_name = f'mnDINO_{INDEX}.pth'
-    model.load(os.path.join(models_dir, model_name))
+    model.load(model_path=os.path.join(models_dir, model_name))
 
 
     for i in tqdm(range(len(annot_files))):

@@ -5,6 +5,9 @@ from tqdm import tqdm
 import argparse
 
 
+def merge_masks(mn, nuc):
+    return mn + np.where(nuc > 0, nuc + mn.max(), 0)
+
 parser = argparse.ArgumentParser(
         description="Reformat microsam Data",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
@@ -22,25 +25,28 @@ save_path = args.save_path
 folders = ['train', 'validation', 'test']
 
 for folder in tqdm(folders):
-    # LOAD_PATH = f'/scr/yren/annotated_mn_datasets/{folder}/'
-    # SAVE_PATH = f'/scr/yren/microsam_data/{folder}/'
     LOAD_PATH = os.path.join(load_path, folder)
     SAVE_PATH = os.path.join(save_path, folder)
+    
+    os.makedirs(SAVE_PATH, exist_ok=True)
     
     images = os.listdir(os.path.join(LOAD_PATH, 'images'))
     images = [image for image in images if not image.startswith('.')]
     images.sort()
     
-    gts = os.listdir(os.path.join(LOAD_PATH, 'mn_masks'))
-    gts = [gt for gt in gts if not gt.startswith('.')]
-    gts.sort()
-    
-    PS = 256
-    for i in tqdm(range(len(gts))):
-        im = skimage.io.imread(os.path.join(LOAD_PATH, 'images', images[i]))
-        gt = skimage.io.imread(os.path.join(LOAD_PATH, 'mn_masks', gts[i]))
+    mn_gts = os.listdir(os.path.join(LOAD_PATH, 'mn_masks'))
+    mn_gts = [gt for gt in mn_gts if not gt.startswith('.')]
+    mn_gts.sort()
 
-        assert im.shape == gt.shape
+    PS = 256
+    for i in tqdm(range(len(mn_gts))):
+        im = skimage.io.imread(os.path.join(LOAD_PATH, 'images', images[i]))
+        mn_gt = skimage.io.imread(os.path.join(LOAD_PATH, 'mn_masks', mn_gts[i]))
+        nuc_gt = skimage.io.imread(os.path.join(LOAD_PATH, 'nuclei_masks', mn_gts[i].replace('.png', '.tif')))
+
+        gt = merge_masks(mn=mn_gt, nuc=nuc_gt)
+        assert im.shape == gt.shape, 'Image shape does not match mask shape!'
+        
         H,W = im.shape
         patches_per_image = (W // PS) * (H // PS)
         X = np.linspace(0, W - W % PS, W // PS + 1)

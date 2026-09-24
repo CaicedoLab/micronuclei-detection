@@ -98,7 +98,7 @@ if __name__ == '__main__':
         mn_gt = skimage.io.imread(gt_path)
         if SCALE_FACTOR != 1.0:
             mn_gt = skimage.transform.rescale(mn_gt, scale=SCALE_FACTOR)
-        evaluation.segmentation_report(imid=imid, predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
+        evaluation.segmentation_report(predictions=micro_labels, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
 
     # release the resources
     wandb.finish()

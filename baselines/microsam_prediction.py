@@ -36,8 +36,8 @@ if __name__ == '__main__':
     parser.add_argument('--train_path', type=str, help='mnDINO dataset path', default='/scr/data/microsam_data/train/')
     parser.add_argument('--pred_path', type=str, help='folder of images that microSAM predicts', default='/scr/data/annotated_mn_datasets/test/images/')
     parser.add_argument('--save_path', type=str, help='Path to save microSAM predictions', 
-                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/microsam_predictions')
-    parser.add_argument('--frozen', action='store_true', default=False, help='specify to use frozen backbone')
+                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/microsam_predictions/')
+    parser.add_argument('--finetune', action='store_true', default=False, help='Specify to finetune the backbone')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
 
     args = parser.parse_args()
@@ -49,17 +49,19 @@ if __name__ == '__main__':
     PATH = args.train_path
     PRED_PATH = args.pred_path
     SAVE_PATH = args.save_path
+    os.makedirs(SAVE_PATH, exist_ok=True)
+    
     if args.wandb_mode:
         WANDB_MODE = 'online'
     else:
         WANDB_MODE = 'disabled'
-    FROZEN = args.frozen
+    FINETUNE = args.finetune
     SCALE_FACTOR = 1.0
 
-    if FROZEN:
-        ARCHITECTURE = f"microSAM predictions - frozen"
-    else:
+    if FINETUNE:
         ARCHITECTURE = f"microSAM predictions - finetuned"
+    else:
+        ARCHITECTURE = f"microSAM predictions - frozen"
 
     
     def run_automatic_instance_segmentation(
@@ -108,12 +110,6 @@ if __name__ == '__main__':
 
         return prediction
 
-    # FROZEN = TRUE
-    if FROZEN:
-        FINETUNE = False
-    else:
-        FINETUNE = True
-        
     if FINETUNE:
         # Data Loader
         raw_key, label_key = '*.tif', '*.png'
@@ -165,14 +161,17 @@ if __name__ == '__main__':
         model_type = "vit_b_lm"
         checkpoint_name = "sam_finetuned_all"
         
-        CKPT_PATH = PATH.replace('test/', '')
-        best_checkpoint = os.path.join(CKPT_PATH, 'microsam_predictions', 'models', 'checkpoints', checkpoint_name, 'best.pt')
+        SAVE_ROOT = os.path.join(SAVE_PATH, "models")
+        CKPT_PATH = os.path.join(SAVE_PATH, 'models', 'checkpoints')
+        os.makedirs(CKPT_PATH, exist_ok=True)
+        
+        best_checkpoint = os.path.join(CKPT_PATH, checkpoint_name, 'best.pt')
 
         # if best_checkpoint exists, skip training
         if not os.path.exists(best_checkpoint):
             sam_training.train_sam(
                 name=checkpoint_name,
-                save_root=os.path.join(CKPT_PATH, "microsam_predictions/models"),
+                save_root=SAVE_ROOT,
                 model_type=model_type,
                 train_loader=train_loader,
                 val_loader=val_loader,
@@ -210,17 +209,7 @@ if __name__ == '__main__':
         H,W = im.shape # 256,256
         
         # Document Inference Time
-        if FROZEN:
-            s = time.time()
-            model_choice = 'vit_b_lm'
-            if (H > 1024) and (W > 1024):
-                prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device=device, tile_shape=(1024, 1024), halo=(256, 256))
-            else:
-                prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device=device)
-            e = time.time()
-            if WANDB_MODE:
-                wandb.log({'Inference Time': e-s})
-        else: # finetune
+        if FINETUNE:
             s = time.time()
             if (H > 1024) and (W > 1024):
                 prediction = run_automatic_instance_segmentation(
@@ -244,6 +233,17 @@ if __name__ == '__main__':
             e = time.time()
             if WANDB_MODE:
                 wandb.log({'Inference Time': e-s})
+        else:
+            s = time.time()
+            model_choice = 'vit_b_lm'
+            if (H > 1024) and (W > 1024):
+                prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device=device, tile_shape=(1024, 1024), halo=(256, 256))
+            else:
+                prediction = run_automatic_instance_segmentation(im, ndim=2, model_type=model_choice, device=device)
+            e = time.time()
+            if WANDB_MODE:
+                wandb.log({'Inference Time': e-s})
+
         
         print(f'{imid}, Inference time used: {e - s: .2f}')
         prediction = np.asarray(prediction, dtype='uint16')
@@ -264,7 +264,7 @@ if __name__ == '__main__':
         # evaluation
         gt_path = os.path.join(PRED_PATH.replace('images', 'mn_masks'), imid + f'.png')
         mn_gt = skimage.io.imread(gt_path)
-        evaluation.segmentation_report(imid=imid, predictions=micro_mask, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
+        evaluation.segmentation_report(predictions=micro_mask, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
 
     # release the resources
     wandb.finish()

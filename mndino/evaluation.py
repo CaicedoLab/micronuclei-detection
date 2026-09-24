@@ -107,14 +107,14 @@ def segmentation_report(predictions, gt, intersection_ratio=0.1, wandb_mode=Fals
     if IoUs.size == 0:
         prec = 0.0
         rec = 0.0
-        return prec, rec
         if wandb_mode:
             wandb.log({'Precision':prec, 'Recall':rec})
+        return prec, rec
     else:
         f1, prec, rec, TP, FP, FN = measures_at(intersection_ratio, IoUs)
-        return prec, rec
         if wandb_mode:
             wandb.log({'Precision':prec, 'Recall':rec})
+        return prec, rec
 
 def get_assignment(C, gt):
     # Map token predictions to pixels (multiply by 8)
