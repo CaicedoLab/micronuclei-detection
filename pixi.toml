@@ -9,16 +9,17 @@ cuda = "12.8"
 [dependencies]
 python = "3.12.*"
 pip = "*"
-ipykernel = "*"
+setuptools = "<82"
 
 
 [pypi-dependencies]
-torch = ">=2.14.0, <3"
+torch = { version = "==2.11.*", index = "https://download.pytorch.org/whl/cu128" }
+torchvision = { version = "==0.26.*", index = "https://download.pytorch.org/whl/cu128" }
 scikit-image = ">=0.26.0, <0.27"
-wandb = ">=0.30.0, <0.31"
+scikit-learn = ">=1.9.1, <2"
 tqdm = ">=4.70.1, <5"
 numpy = ">=2.5.3, <3"
-matplotlib = ">=3.11.2, <4"
 pandas = ">=3.0.6, <4"
-torchvision = ">=0.29.0, <0.30"
-cellpose = ">=4.2.1.1, <5"
+wandb = ">=0.30.0, <0.31"
+# torchmetrics = ">=1.9.0, <2" # dinov3
+# termcolor = ">=3.3.0, <4" # dinov3

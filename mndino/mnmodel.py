@@ -4,7 +4,6 @@ import torch
 import wandb
 
 import numpy as np
-import pandas as pd
 import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
@@ -243,7 +242,7 @@ class MicronucleiModel(torch.nn.Module):
         best_vloss = 1_000_000.
 
         start = time.time()
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs), desc='Training...'):
             # Training
             # print(f'EPOCH {epoch} - ', end='') # comment only for grid search purpose
             T = time.time()
