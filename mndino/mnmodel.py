@@ -20,7 +20,7 @@ import mndino.detection as detection
 class DiceLoss(torch.nn.Module):
     def __init__(self, alpha=0.8, beta=0.2, smoothing=1e-5, reduction='mean'):
         """_summary_
-
+        
         Args:
             alpha (_type_): weight for micronuclei class, default=0.8
             beta (_type_): weight for nuclei class, default=0.2
