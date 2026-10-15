@@ -54,28 +54,35 @@ def main():
     results = []
     
     for folder in tqdm(folders): 
+        print(folder)
         IoU_files = os.listdir(os.path.join(args.folder_path, folder))
         IoU_files = sorted([file for file in IoU_files if file.endswith('.npy')])
         
         for file in tqdm(IoU_files):
             IoU = np.load(os.path.join(args.folder_path, folder, file))
-            imid = os.path.splitext(file)[0]
+            if IoU.size == 0:
+                iou_score = 0
+            else:
+                iou_score = np.mean(IoU.max(axis=0)) # Maximum column-wise
+            
+            imid = file.split('.npy')[0]
         
             if IoU.size == 0:
                 precision = 0.0
                 recall = 0.0
                 f1 = 0.0
             else:
-                f1, precicion, recall, TP, FP, FN = measures_at(args.iou_threshold, IoU)
+                f1, precision, recall, TP, FP, FN = measures_at(args.iou_threshold, IoU)
             
             filename = imid + '.tif'
             # print(filename)
             dataset = meta[meta.filenames == filename].datasets.item()
             # print(dataset)
-            item = {'imid':imid, 'methods':folder, 'datasets':dataset, 'iou_threshold':args.iou_threshold, 'f1':round(f1, 4)}
+            item = {'imid':imid, 'methods':folder, 'datasets':dataset, 'iou_threshold':args.iou_threshold, 
+                    'iou_score':round(iou_score, 4), 'precision':round(precision, 4), 'recall':round(recall, 4), 'f1':round(f1, 4)}
             results.append(item)
 
-    pd.DataFrame(results, columns=['imid', 'methods', 'datasets', 'iou_threshold', 'f1']).to_csv(
+    pd.DataFrame(results, columns=['imid', 'methods', 'datasets', 'iou_threshold', 'iou_score', 'precision', 'recall', 'f1']).to_csv(
         os.path.join(args.folder_path, f'results_{args.iou_threshold}.csv'), index=False
     )
     

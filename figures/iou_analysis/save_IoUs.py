@@ -6,60 +6,65 @@ import skimage
 from tqdm import tqdm
 import argparse
 import numpy as np
-# from cellpose import io, models
-from typing import Union, Tuple, Optional
-from micro_sam.automatic_segmentation import get_predictor_and_segmenter, automatic_instance_segmentation 
+# from cellpose import io, models, train
+# from typing import Union, Tuple, Optional
+# from micro_sam.automatic_segmentation import get_predictor_and_segmenter, automatic_instance_segmentation 
 # from huggingface_hub import hf_hub_download
-from mndino import mnmodel, evaluation, mnds
+# from mndino import mnmodel, evaluation, mnds
 
 
-def run_automatic_instance_segmentation(
-        image: np.ndarray,
-        ndim: int,
-        checkpoint_path: Optional[Union[os.PathLike, str]] = None,
-        model_type: str = "vit_b_lm",
-        device: Optional[Union[str, torch.device]] = None,
-        tile_shape: Optional[Tuple[int, int]] = None,
-        halo: Optional[Tuple[int, int]] = None,
-    ):
-        """Automatic Instance Segmentation (AIS) by training an additional instance decoder in SAM.
+# def run_automatic_instance_segmentation(
+#         image: np.ndarray,
+#         ndim: int,
+#         checkpoint_path: Optional[Union[os.PathLike, str]] = None,
+#         model_type: str = "vit_b_lm",
+#         device: Optional[Union[str, torch.device]] = None,
+#         tile_shape: Optional[Tuple[int, int]] = None,
+#         halo: Optional[Tuple[int, int]] = None,
+#     ):
+#         """Automatic Instance Segmentation (AIS) by training an additional instance decoder in SAM.
 
-        NOTE: AIS is supported only for `µsam` models.
+#         NOTE: AIS is supported only for `µsam` models.
 
-        Args:
-            image: The input image.
-            ndim: The number of dimensions for the input data.
-            checkpoint_path: The path to stored checkpoints.
-            model_type: The choice of the `µsam` model.
-            device: The device to run the model inference.
-            tile_shape: The tile shape for tiling-based segmentation.
-            halo: The overlap shape on each side per tile for stitching the segmented tiles.
+#         Args:
+#             image: The input image.
+#             ndim: The number of dimensions for the input data.
+#             checkpoint_path: The path to stored checkpoints.
+#             model_type: The choice of the `µsam` model.
+#             device: The device to run the model inference.
+#             tile_shape: The tile shape for tiling-based segmentation.
+#             halo: The overlap shape on each side per tile for stitching the segmented tiles.
 
-        Returns:
-            The instance segmentation.
-        """
-        # Step 1: Get the 'predictor' and 'segmenter' to perform automatic instance segmentation.
-        predictor, segmenter = get_predictor_and_segmenter(
-            model_type=model_type,  # choice of the Segment Anything model
-            checkpoint=checkpoint_path,  # overwrite to pass your own finetuned model.
-            device=device,  # the device to run the model inference.
-            # amg='ais',  # set the automatic segmentation mode to AIS.
-            is_tiled=(tile_shape is not None),  # whether to run automatic segmentation with tiling.
-        )
+#         Returns:
+#             The instance segmentation.
+#         """
+#         # Step 1: Get the 'predictor' and 'segmenter' to perform automatic instance segmentation.
+#         predictor, segmenter = get_predictor_and_segmenter(
+#             model_type=model_type,  # choice of the Segment Anything model
+#             checkpoint=checkpoint_path,  # overwrite to pass your own finetuned model.
+#             device=device,  # the device to run the model inference.
+#             # amg='ais',  # set the automatic segmentation mode to AIS.
+#             is_tiled=(tile_shape is not None),  # whether to run automatic segmentation with tiling.
+#         )
 
-        # Step 2: Get the instance segmentation for the given image.
-        prediction = automatic_instance_segmentation(
-            predictor=predictor,  # the predictor for the Segment Anything model.
-            segmenter=segmenter,  # the segmenter class responsible for generating predictions.
-            input_path=image,  # the filepath to image or the input array for automatic segmentation.
-            ndim=ndim,  # the number of input dimensions.
-            tile_shape=tile_shape,  # the tile shape for tiling-based prediction.
-            halo=halo,  # the overlap shape for tiling-based prediction.
-        )
+#         # Step 2: Get the instance segmentation for the given image.
+#         prediction = automatic_instance_segmentation(
+#             predictor=predictor,  # the predictor for the Segment Anything model.
+#             segmenter=segmenter,  # the segmenter class responsible for generating predictions.
+#             input_path=image,  # the filepath to image or the input array for automatic segmentation.
+#             ndim=ndim,  # the number of input dimensions.
+#             tile_shape=tile_shape,  # the tile shape for tiling-based prediction.
+#             halo=halo,  # the overlap shape for tiling-based prediction.
+#         )
 
-        return prediction
+#         return prediction
     
-    
+def read_image(image_path, scale=1.0):
+    im = skimage.io.imread(image_path)
+    if scale != 1.:
+        im = skimage.transform.rescale(im, scale)
+    return im
+
 def compare_two_labels(label_model, label_gt, return_IoU_matrix, debug=False):
     
     # get number of detected nuclei
@@ -129,7 +134,7 @@ def compare_two_labels(label_model, label_gt, return_IoU_matrix, debug=False):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="test mnDINO IoUs threshold",
+        description="Save IoU matrices",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter # Shows default values in help message
     )
     
@@ -150,12 +155,12 @@ def main():
     
     args = parse_args()
     
-    PATH = os.path.join(args.path, 'test/images')
-
+    # PATH = os.path.join(args.path, 'test/images')
+    PATH = args.path
         
     # Load Model
     device = f"cuda" if torch.cuda.is_available() else 'cpu'
-
+    os.makedirs(args.save_path, exist_ok=True)
     # model = mnmodel.MicronucleiModel(device=device)
     # model.load(model_path)
     
@@ -165,57 +170,78 @@ def main():
     # model = models.CellposeModel(gpu=True, 
     #                              pretrained_model=model_path, 
     #                              device=torch.device(device))
-    model_type = "vit_b_lm"
-    CKPT_PATH = os.path.join('/scr/yren/microsam_predictions/', 'models', 'checkpoints')
-    checkpoint_name = "sam_finetuned_all"
-    best_checkpoint = os.path.join(CKPT_PATH, checkpoint_name, 'best.pt')
+    # model_type = "vit_b_lm"
+    # CKPT_PATH = os.path.join('/scr/yren/microsam_predictions/', 'models', 'checkpoints')
+    # checkpoint_name = "sam_finetuned_all"
+    # best_checkpoint = os.path.join(CKPT_PATH, checkpoint_name, 'best.pt')
     
     files = os.listdir(PATH)
     filelist = sorted([file for file in files if not file.startswith('.')])
-    annot_files = sorted(filelist.copy())
+    filelist = sorted([file for file in files if file.endswith('.npy')])
+    annot_files = sorted(filelist.copy()) # npy files for UNet
     
-
+    # gts_files = sorted(os.listdir(PATH.replace('images', 'mn_masks')))
+    # imgs = [io.imread(os.path.join(PATH, f)) for f in filelist]
+    # gts = [io.imread(os.path.join(PATH.replace('images', 'mn_masks'), f)) for f in gts_files]
+    
+    # pretrained_model_path = '/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/cp3_fintuned_predictions/models/cellpose_finetuned.pth'
+    # model = models.CellposeModel(gpu=True, 
+    #                                      pretrained_model=str(pretrained_model_path),
+    #                                      device=torch.device(device))
+    # model = mnmodel.MicronucleiModel(
+    #     device=device,
+    #     data_dir=PATH,
+    #     model_type='unet'
+    # )
+    # model_name = f'mnDINO_unet.pth'
+    # models_dir = os.path.join(PATH, 'models')
+    # # model_name = f'mnDINO_{INDEX}.pth'
+    # model.load(model_path=os.path.join(models_dir, model_name))
     MICRON_AREA_THRESHOLD = 300
+    # DIAMETER = model.diam_labels.copy()
+    # channels = [0,0]
     for i in tqdm(range(len(annot_files))):
         test_file = annot_files[i]
-        im = skimage.io.imread(os.path.join(PATH, test_file))
-        im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
-        H, W = im.shape
-        if (H > 1024) and (W > 1024):
-            prediction = run_automatic_instance_segmentation(
-                image=im,
-                ndim=2,
-                checkpoint_path=best_checkpoint,
-                model_type=model_type,
-                device=device,
-                tile_shape=(1024, 1024), 
-                halo=(256, 256) # step size
-            )
-        else:
-            prediction = run_automatic_instance_segmentation(
-                image=im,
-                ndim=2,
-                checkpoint_path=best_checkpoint,
-                model_type=model_type,
-                device=device,
-                halo=(256, 256) # step size, probably smaller than image size
-            )
+        prediction = np.load(os.path.join(PATH, test_file))
+        # im = skimage.io.imread(os.path.join(PATH, test_file))
+        # im = np.array((im - np.min(im))/(np.max(im) - np.min(im)), dtype="float32")
+        # H, W = im.shape
+        # if (H > 1024) and (W > 1024):
+        #     prediction = run_automatic_instance_segmentation(
+        #         image=im,
+        #         ndim=2,
+        #         checkpoint_path=best_checkpoint,
+        #         model_type=model_type,
+        #         device=device,
+        #         tile_shape=(1024, 1024), 
+        #         halo=(256, 256) # step size
+        #     )
+        # else:
+        #     prediction = run_automatic_instance_segmentation(
+        #         image=im,
+        #         ndim=2,
+        #         checkpoint_path=best_checkpoint,
+        #         model_type=model_type,
+        #         device=device,
+        #         halo=(256, 256) # step size, probably smaller than image size
+        #     )
+        # prediction = model.eval(im, channels=channels, diameter=DIAMETER)[0]
+        # prediction = np.asarray(prediction, dtype='uint16')
+        # labels = skimage.morphology.label(prediction)
+        micro_mask = skimage.morphology.label(prediction)
         
-        prediction = np.asarray(prediction, dtype='uint16')
-        labels = skimage.morphology.label(prediction)
-        
-        micron_labels = []
-        for i in range(1, len(np.unique(labels))):
-            area = np.sum(labels == i)
-            if area < MICRON_AREA_THRESHOLD:
-                micron_labels.append(i)
+        # micron_labels = []
+        # for i in range(1, len(np.unique(labels))):
+        #     area = np.sum(labels == i)
+        #     if area < MICRON_AREA_THRESHOLD:
+        #         micron_labels.append(i)
                 
-        micro_mask = np.zeros_like(labels)
-        for i in micron_labels:
-            micro_mask += (labels == i)
+        # micro_mask = np.zeros_like(labels)
+        # for i in micron_labels:
+        #     micro_mask += (labels == i)
             
-        
-        mn_gt = mnds.read_image(os.path.join(PATH.replace('images', 'mn_masks'), test_file.replace('.tif', '.png')), scale=args.scale)
+        gt_path = '/scr/data/annotated_mn_datasets/test/mn_masks/'
+        mn_gt = read_image(os.path.join(gt_path, test_file.replace('._probabilities.npy', '.png')), scale=args.scale)
         mn_gt = mn_gt > 0
         mn_gt = skimage.morphology.label(mn_gt)
         
@@ -225,8 +251,8 @@ def main():
         nb_overdetection, nb_underdetection, mean_IoU, IoUs = compare_two_labels(labeled_mn, mn_gt, True, False)
         
         # Save IoUs
-        os.makedirs(args.save_path, exist_ok=True)
-        np.save(os.path.join(args.save_path, os.path.splitext(test_file)[0] + '.npy'), IoUs)
+        imid = test_file.split('._probabilities.npy')[0] # UNet & MNFinder
+        np.save(os.path.join(args.save_path, imid + '.npy'), IoUs)
         
     
     print(f'IoU matrices saved successfully to {args.save_path}')
