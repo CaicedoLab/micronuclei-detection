@@ -9,8 +9,8 @@ version = "0.1.0"
 [environments]
 # <env_name> = ["<feature_name>"]
 # add feature first, and then use pixi workspace to link environment to a specific feature
-mnfinder = ["mnf"]
-cellpose3 = ["cp3"]
+mnf = ["mnf"]
+cp3 = ["cp3"]
 microsam = ["microsam"]
 cpsam = ["cpsam"]
 

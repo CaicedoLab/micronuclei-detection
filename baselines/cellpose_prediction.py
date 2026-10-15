@@ -25,8 +25,9 @@ if __name__ == '__main__':
     parser.add_argument('--train_path', type=str, help='mnDINO dataset path', 
                         default='/scr/data/annotated_mn_datasets/train/images')
     parser.add_argument('--save_path', type=str, help='Path to save Cellpose predictions', 
-                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/mndino_data/baselines/cellpose_predictions')
-    parser.add_argument('--finetune', action='store_true', default=False, help='specify to use frozen backbone')
+                        default='/hdd/jcaicedo/projects/micronuclei_detection/Train_and_Eval/baselines/cellpose_predictions')
+    parser.add_argument('--finetune', action='store_true', default=False, help='specify to finetune backbone')
+    parser.add_argument('--iou_threshold', type=float, default=0.1, help='IOU threshold, 0.1 suggested for subcellular structures.')
     parser.add_argument('-w', '--wandb_mode', action='store_true', help='Choose to turn on Weights and Biases')
 
     args = parser.parse_args()
@@ -56,7 +57,7 @@ if __name__ == '__main__':
 
 
     # Load Test Images
-    TEST_PATH = TRAIN_PATH.replace('train', 'validation')
+    TEST_PATH = TRAIN_PATH.replace('train', 'test')
     test_files = os.listdir(TEST_PATH)
     test_filelist = [file for file in test_files if not file.startswith('.')]
     test_filelist.sort()
@@ -81,7 +82,7 @@ if __name__ == '__main__':
         )
         
         model = models.CellposeModel(gpu=True, 
-                                     pretrained_model=new_model_path,
+                                     pretrained_model=str(new_model_path),
                                      device=torch.device(device))
     
 
@@ -135,7 +136,7 @@ if __name__ == '__main__':
         mn_gt = skimage.io.imread(gt_path)
         if SCALE_FACTOR != 1.0:
             mn_gt = skimage.transform.rescale(mn_gt, scale=SCALE_FACTOR)
-        evaluation.segmentation_report(predictions=micro_mask, gt=mn_gt, intersection_ratio=0.1, wandb_mode=WANDB_MODE)
+        evaluation.segmentation_report(predictions=micro_mask, gt=mn_gt, intersection_ratio=args.iou_threshold, wandb_mode=WANDB_MODE)
 
     # release the resources
     wandb.finish()

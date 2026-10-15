@@ -115,14 +115,14 @@ if __name__ == '__main__':
         raw_key, label_key = '*.tif', '*.png'
 
         train_dir = PATH.replace('test', 'train')
-        val_dir = PATH.replace('test', 'validation')
+        val_dir = PATH.replace('train', 'validation')
         train_instance_segmentation = True
         train_segmentation_dir = train_dir
         val_segmentation_dir = val_dir
 
         batch_size = 1  # the training batch size
         patch_shape = (256, 256)  # the size of patches for training
-        sampler = MinInstanceSampler(min_size=25)
+        sampler = MinInstanceSampler(min_size=1)
 
         train_loader = sam_training.default_sam_loader(
             raw_paths=train_dir,
