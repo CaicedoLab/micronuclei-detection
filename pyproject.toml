@@ -7,7 +7,7 @@ packages = ["mndino"]
 
 [project]
 name = "mndino" # pypi
-version = "0.0.0.3" # pypi
+version = "0.0.0.4" # pypi
 # name = "mn-dino-test" # test-pypi
 # version = "0.0.0.1" # test-pypi
 authors = [
@@ -15,10 +15,10 @@ authors = [
     {name="Louise Morlot", email="louise.morlot@cpr.ku.dk"},
     {name="Owen Andrews", email="oandrews@broadinstitute.org"},
     {name="Emil Peter Thrane Hertz", email="emil.hertz@cpr.ku.dk"},
-    {name="Niels Mailand", emial="niels.mailand@sund.ku.dk"},
+    {name="Niels Mailand", email="niels.mailand@sund.ku.dk"},
     {name="Juan Caicedo", email="juan.caicedo@wisc.edu"}
 ]
-description = "mn-DINO: [add description of the project later]"
+description = "mn-DINO: Accurate and robust segmentation of micronuclei with vision transformer networks"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -26,7 +26,6 @@ dependencies = [
     "torchvision",
     "scikit-image",
     "scikit-learn",
-    "matplotlib",
     "numpy",
     "pandas",
     "pillow",

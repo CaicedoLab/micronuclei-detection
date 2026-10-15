@@ -3,10 +3,11 @@
 python3 training_model.py \
     --path /scr/data/annotated_mn_datasets/ \
     --gpu 0 \
-    --model_type dino \
+    --model_type unet \
     --epochs 20 \
+    --batch_size 4 \
     --loss_fn combined \
-    --lr 1e-6 \
+    --lr 1e-5 \
     --scale 1.0 \
     --gaussian \
     --wandb_mode
@@ -15,7 +16,7 @@ python3 prediction.py \
     --path '/scr/data/annotated_mn_datasets/'\
     --test_set \
     --gpu 0 \
-    --model_type dino \
+    --model_type unet \
     --step 32 \
     --batch_size 4 \
     --prob_threshold 0.5 \

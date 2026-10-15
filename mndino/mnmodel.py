@@ -179,8 +179,8 @@ class MicronucleiModel(torch.nn.Module):
             self.model = detection.UNet2D(
                 in_channels=3,
                 out_channels=2,
-                base_filters=64,
-                depth=5,
+                base_filters=32,
+                depth=4,
                 device=self.device,
             )
     
@@ -191,10 +191,7 @@ class MicronucleiModel(torch.nn.Module):
             self.loss_fn = FocalLoss(alpha=0.25, gamma=1, reduction='mean')
         elif loss_fn == 'combined':
             # Use all default parameters, gamma = 2 so far is good
-            
-            # test Mic 0.5 weights (alpha) Nuc 0.5 (beta)
-            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.5, dice_beta=0.5, smoothing=1e-5)
-            # self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
+            self.loss_fn = CombinedFocalDiceLoss(focal_weight=0.95, dice_weight=0.05, alpha=0.25, gamma=2, reduction='mean', dice_alpha=0.8, dice_beta=0.2, smoothing=1e-5)
             
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay) #, momentum=0.9)
         
@@ -294,8 +291,8 @@ class MicronucleiModel(torch.nn.Module):
             self.model = detection.UNet2D(
                 in_channels=3,
                 out_channels=2,
-                base_filters=64,
-                depth=5,
+                base_filters=32,
+                depth=4,
                 device=self.device,
             )
         self.model.load_state_dict(torch.load(model_path))

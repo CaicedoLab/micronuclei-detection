@@ -178,7 +178,7 @@ class UNet2D(nn.Module):
         self,
         in_channels: int = 3,
         out_channels: int = 2,
-        base_filters: int = 64,
+        base_filters: int = 32,
         depth: int = 4,
         device: torch.device = torch.device("cpu"),
     ):
