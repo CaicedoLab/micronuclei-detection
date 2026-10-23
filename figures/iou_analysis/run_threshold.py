@@ -6,7 +6,8 @@ from pathlib import Path
 
 
 script = Path(__file__).with_name("explore_iou_threshold.py")
-for threshold in tqdm(range(1, 10), desc='Iterating threshold from 0.1 to 0.9...'):
+# for threshold in tqdm(range(1, 10), desc='Iterating threshold from 0.1 to 0.9...'):
+if True:
     subprocess.run(
         [
             sys.executable,
@@ -16,7 +17,8 @@ for threshold in tqdm(range(1, 10), desc='Iterating threshold from 0.1 to 0.9...
             "--meta_path",
             "/scr/data/annotated_mn_datasets/metadata.csv",
             "--iou_threshold",
-            f"{threshold / 10:.1f}",
+            "0.1",
+            # f"{threshold / 10:.1f}",
         ],
         check=True,
     )

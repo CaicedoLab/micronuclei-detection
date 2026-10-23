@@ -63,7 +63,8 @@ def main():
             if IoU.size == 0:
                 iou_score = 0
             else:
-                iou_score = np.mean(IoU.max(axis=0)) # Maximum column-wise
+                # iou_score = np.mean(IoU.max(axis=0)) # Maximum column-wise
+                iou_score = IoU.max(axis=0).sum() # average on 1238 objects
             
             imid = file.split('.npy')[0]
         
@@ -83,7 +84,7 @@ def main():
             results.append(item)
 
     pd.DataFrame(results, columns=['imid', 'methods', 'datasets', 'iou_threshold', 'iou_score', 'precision', 'recall', 'f1']).to_csv(
-        os.path.join(args.folder_path, f'results_{args.iou_threshold}.csv'), index=False
+        os.path.join(args.folder_path, f'macro_results_{args.iou_threshold}.csv'), index=False
     )
     
             
